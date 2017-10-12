@@ -133,7 +133,7 @@ function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionTok
         results.forEach(tqItem => {
             if(tqItem.data.length > 0){
                 lookupResults.push({
-                    entity: entityLookup[tqItem.data[0].value],
+                    entity: tqItem._entityObject,
                     data: {
                         summary: ["Class: " + tqItem.data[0].class + " Status: " + tqItem.data[0].status.name],
                         details: {
@@ -267,9 +267,11 @@ function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
                 done(err);
                 return;
             }
+            Logger.debug({enttitiesArray: entityLookup[0]}, "What does the entities array look like");
             Logger.debug({body: body}, "LookupEntity Results");
 
-            body._entityObject = entitiesArray[0];
+
+            body._entityObject = entityLookup[entitiesArray[0]];
 
             done(null, body);
         });
