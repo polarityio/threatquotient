@@ -10,7 +10,7 @@ let fs = require('fs');
 let SessionManager = require('./lib/session-manager');
 let Logger;
 
-let requestOptions = {};
+let requestWithDefaults;
 let sessionManager;
 
 
@@ -30,7 +30,7 @@ function createEntityGroups(entities, options, cb) {
     let entityGroups = [];
     let entityGroup = [];
 
-    Logger.debug({entities:entities, options:options}, 'Entities and Options');
+    Logger.debug({entities: entities, options: options}, 'Entities and Options');
 
     entities.forEach(function (entity) {
         if (entityGroup.length >= MAX_ENTITIES_PER_LOOKUP) {
@@ -38,9 +38,9 @@ function createEntityGroups(entities, options, cb) {
             entityGroup = [];
         }
 
-        if((entity.isPrivateIP || IGNORED_IPS.has(entity.value)) && options.ignorePrivateIps){
+        if ((entity.isPrivateIP || IGNORED_IPS.has(entity.value)) && options.ignorePrivateIps) {
             return;
-        }else{
+        } else {
             entityGroup.push(entity.value);
             entityLookup[entity.value.toLowerCase()] = entity;
         }
@@ -66,39 +66,39 @@ function _doLookup(entityGroups, entityLookup, options, cb) {
 
         let sessionToken = sessionManager.getSession(options.username, options.password);
 
-        if(sessionToken){
+        if (sessionToken) {
 // we are already authenticated.
             Logger.debug({numSession: sessionManager.getNumSessions()}, 'Session Already Exists');
-/*
-            options.severityQueryString = SEVERITY_LEVELS_QUERY_FORMAT.slice(SEVERITY_LEVELS.indexOf(options.minimumSeverity))
-                .join(" OR " );*/
+            /*
+             options.severityQueryString = SEVERITY_LEVELS_QUERY_FORMAT.slice(SEVERITY_LEVELS.indexOf(options.minimumSeverity))
+             .join(" OR " );*/
 
-            _lookupWithSessionToken(entityGroups, entityLookup, options, sessionToken, function(err, results){
-                if(err && err === ERROR_EXPIRED_SESSION){
+            _lookupWithSessionToken(entityGroups, entityLookup, options, sessionToken, function (err, results) {
+                if (err && err === ERROR_EXPIRED_SESSION) {
 // the session was expired so we need to retry
 // remove the session and try again
-                    Logger.debug({err:err}, "Clearing Session");
+                    Logger.debug({err: err}, "Clearing Session");
                     sessionManager.clearSession(options.username, options.password);
                     _doLookup(entityGroups, entityLookup, options, cb);
-                }else if(err){
-                    Logger.error({err:err}, 'Error doing lookup');
+                } else if (err) {
+                    Logger.error({err: err}, 'Error doing lookup');
                     cb(err);
-                }else{
+                } else {
                     Logger.debug({results: results}, "Logging results in dolookup");
                     cb(null, results);
                 }
             });
-        }else{
+        } else {
 // we are not authenticated so we need to login and get a sessionToken
             Logger.trace('Session does not exist. Creating Session');
-            _login(options, function(err, sessionToken){
-                Logger.debug({sessionToken:sessionToken}, 'Created new session');
-                if(err){
-                    Logger.error({err:err}, 'Error logging in');
+            _login(options, function (err, sessionToken) {
+                Logger.debug({sessionToken: sessionToken}, 'Created new session');
+                if (err) {
+                    Logger.error({err: err}, 'Error logging in');
 // Cover the case where an error is returned but the session was still created.
-                    if(err === ERROR_EXPIRED_SESSION){
+                    if (err === ERROR_EXPIRED_SESSION) {
                         cb('Invalid Username or Password');
-                    }else{
+                    } else {
                         cb(err);
                     }
 
@@ -109,17 +109,16 @@ function _doLookup(entityGroups, entityLookup, options, cb) {
                 _doLookup(entityGroups, entityLookup, options, cb);
             });
         }
-    }else{
+    } else {
         cb(null, []);
     }
 }
 
 
-
-function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionToken, cb){
+function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionToken, cb) {
     let lookupResults = [];
 
-    let tqUri = options.url +"/indicators/";
+    let tqUri = options.url + "/indicators/";
 
     async.map(entityGroups, function (entityGroup, next) {
         _lookupEntity(entityGroup, entityLookup, sessionToken, options, next);
@@ -129,31 +128,36 @@ function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionTok
             return;
         }
 
-        Logger.debug({entity: entityGroups[0]}, "Checking what Results looks like");
+        Logger.debug({results: results}, "Results from async map lookupEntity");
 
-
-
-        results.forEach(tqData => {
+        results.forEach(tqItem => {
+            if(tqItem.data.length > 0){
                 lookupResults.push({
-                    entity: entityLookup[tqData.data[0].value],
+                    entity: entityLookup[tqItem.data[0].value],
                     data: {
-                        summary: ["Class: " + tqData.data[0].class + " Status: " + tqData.data[0].status.name],
+                        summary: ["Class: " + tqItem.data[0].class + " Status: " + tqItem.data[0].status.name],
                         details: {
-                            allData: tqData.data,
+                            allData: tqItem.data,
                             url: tqUri
                         }
                     }
                 });
-    });
+            }else{
+                // cache miss here
+                lookupResults.push({
+                    entity: tqItem._entityObject,
+                    data: null
+                });
+            }
+        });
 
-        Logger.debug({lookupResults:lookupResults}, 'Lookup Results');
+        Logger.debug({lookupResults: lookupResults}, 'Lookup Results');
 
         cb(null, lookupResults);
     });
 }
 
 function _handleRequestError(err, response, body, options, cb) {
-
 
 
     if (err) {
@@ -169,7 +173,7 @@ function _handleRequestError(err, response, body, options, cb) {
 // receive this error.
 // 403 is returned if the session is invalid but also if you try to login with invalid creds.
     if (response.statusCode === 401) {
-        Logger.debug({err:err, body:body}, "Received HTTP Status 401");
+        Logger.debug({err: err, body: body}, "Received HTTP Status 401");
         cb(ERROR_EXPIRED_SESSION);
         return;
     }
@@ -190,61 +194,82 @@ function _handleRequestError(err, response, body, options, cb) {
 }
 
 
-function _login(options, done){
-
-//do the lookup
-    requestOptions.rejectUnauthorized = false;
-    requestOptions.uri = options.url + '/api/token';
-    requestOptions.method = 'POST';
-    requestOptions.body = {
-        email: options.username,
-        password: options.password,
-        grant_type: "password",
-        client_id: options.client
-
+function _login(options, done) {
+    //do the lookup
+    let requestOptions = {
+        method: 'POST',
+        uri: options.url + '/api/token',
+        body: {
+            email: options.username,
+            password: options.password,
+            grant_type: "password",
+            client_id: options.client,
+        },
+        json: true
     };
-    requestOptions.json = true;
-    Logger.debug({bodyOptions: requestOptions.body}, "Checking what body is being sent");
-    request(requestOptions, function(err, response, body){
+
+    Logger.debug({loginRequestOptions: requestOptions}, "Login Request Options");
+
+    requestWithDefaults(requestOptions, function (err, response, body) {
         _handleRequestError(err, response, body, options, function (err, body) {
             if (err) {
-                Logger.error({err: err}, 'Error Authenticating with ThreatQuotient');
+                Logger.error({err: err, body: body}, 'HTTP Error Authenticating with ThreatQuotient');
                 done(err);
                 return;
             }
 
-            done(null, body["access_token"]);
+            if (response.statusCode !== 200) {
+                Logger.error({err: err, body: body}, 'Non 200 HTTP Code when Authenticating with ThreatQuotient');
+                done(err);
+                return;
+            }
+
+            Logger.info({body:body}, "Login Body");
+
+            if(typeof body === 'object' && typeof body.access_token === 'string'){
+                done(null, body.access_token);
+            }else{
+                Logger.error({err: err, body: body}, 'Could not find access token in login response');
+                done(err);
+                return;
+            }
         });
     });
 }
 
 function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
+    //do the lookup
+    let requestOptions = {
+        method: 'GET',
+        uri: options.url + "/api/indicators/search",
+        qs:{
+            limit: 10,
+            value: entitiesArray[0],
+            with: "tags,score"
+        },
+        headers:{
+            Authorization: "Bearer " + apiToken
+        },
+        json: true
+    };
 
+    Logger.debug({requestOptions: requestOptions}, "_lookupEntity Request Options");
 
-//do the lookup
-    requestOptions.rejectUnauthorized = false;
-    requestOptions.uri = options.url + "/api/indicators/search";
-    requestOptions.qs = {limit: 10, value: entitiesArray[0], with: "tags,score"};
-    requestOptions.method = 'GET';
-    requestOptions.headers = {
-        Authorization: "Bearer " + apiToken
-    }
-    requestOptions.json = true;
-
-    Logger.debug({requestOptions: requestOptions}, "checking requestOptions");
-    request(requestOptions, function (err, response, body) {
+    requestWithDefaults(requestOptions, function (err, response, body) {
         _handleRequestError(err, response, body, options, function (err, body) {
             if (err) {
-                if(err === ERROR_EXPIRED_SESSION){
-                    Logger.debug({err:err}, 'Session Expired');
-                }else{
+                if (err === ERROR_EXPIRED_SESSION) {
+                    Logger.debug({err: err}, 'Session Expired');
+                } else {
                     Logger.error({err: err}, 'Error Looking up Entity');
                 }
 
                 done(err);
                 return;
             }
-            Logger.debug({body:body}, "LookupEntity Results");
+            Logger.debug({body: body}, "LookupEntity Results");
+
+            body._entityObject = entitiesArray[0];
 
             done(null, body);
         });
@@ -293,35 +318,37 @@ function _createJsonErrorObject(msg, pointer, httpCode, code, title, meta) {
 function startup(logger) {
     Logger = logger;
 
+
+    let defaults = {};
+
     if (typeof config.request.cert === 'string' && config.request.cert.length > 0) {
-        requestOptions.cert = fs.readFileSync(config.request.cert);
+        defaults.cert = fs.readFileSync(config.request.cert);
     }
 
     if (typeof config.request.key === 'string' && config.request.key.length > 0) {
-        requestOptions.key = fs.readFileSync(config.request.key);
+        defaults.key = fs.readFileSync(config.request.key);
     }
 
     if (typeof config.request.passphrase === 'string' && config.request.passphrase.length > 0) {
-        requestOptions.passphrase = config.request.passphrase;
+        defaults.passphrase = config.request.passphrase;
     }
 
     if (typeof config.request.ca === 'string' && config.request.ca.length > 0) {
-        requestOptions.ca = fs.readFileSync(config.request.ca);
+        defaults.ca = fs.readFileSync(config.request.ca);
     }
 
     if (typeof config.request.proxy === 'string' && config.request.proxy.length > 0) {
-        requestOptions.proxy = config.request.proxy;
+        defaults.proxy = config.request.proxy;
     }
 
 
     if (typeof config.request.rejectUnauthorized === 'boolean') {
-        requestOptions.rejectUnauthorized = config.request.rejectUnauthorized;
+        defaults.rejectUnauthorized = config.request.rejectUnauthorized;
     }
 
     sessionManager = new SessionManager(Logger);
 
-// Logger.info({requestOptionsIp: requestOptionsIp}, 'requestOptionsIp after load');
-// Logger.info({requestOptionsHash: requestOptionsHash}, 'requestOptionsHash after load');
+    requestWithDefaults = request.defaults(defaults);
 }
 
 
