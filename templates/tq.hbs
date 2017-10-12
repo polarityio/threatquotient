@@ -1,0 +1,49 @@
+
+
+<div class="dnsdball">
+{{#each block.data.details.allData as |item|}}
+
+    <div class = "url">
+        {{#if item.id }}
+        <a href="{{block.data.details.url}}{{item.id}}/details"> (View in ThreatQ) </a>
+        {{/if}}
+    </div>
+
+<div class = "rtype">
+    {{#if item.type.name}}
+    <i class = "fa fa-info-circle #ADADAD"></i><span class="type"> <b>Name: </b> </span>
+    {{item.type.name}}
+    {{/if}}
+</div>
+
+<div class = "count">
+    {{#if item.status.description}}
+    <span class="counts"> Description: </span>
+    <b>{{item.status.description}}</b>
+    {{/if}}
+</div>
+
+<div class = "bali">
+    {{#if item.hash}}
+    <span class="balis"> Hash: </span>
+    <b>{{item.hash}}</b>
+    {{/if}}
+</div>
+
+<div class = "first">
+    {{#if item.touched_at}}
+    <span class="Ctimefirst"> Touched: </span>
+    <b>{{item.touched_at}}</b>
+    {{/if}}
+</div>
+
+<div class = "last">
+    {{#if item.last_detected_at}}
+    <span class="Ctimelast"> Last Detected: </span>
+    <b>{{item.last_detected_at}}</b>
+    {{/if}}
+</div>
+
+
+{{/each}}
+</div>
