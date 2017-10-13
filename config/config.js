@@ -94,7 +94,7 @@ module.exports = {
     options: [
         {
             key: "url",
-            name: "Anomali STAXX Server URL",
+            name: "ThreatQ Server URL",
             description: "The URL for your STAXX server which should include the schema (i.e., http, https) and port if required",
             default: "",
             type: "text",
@@ -103,8 +103,8 @@ module.exports = {
         },
         {
             key: "username",
-            name: "Email",
-            description: "Your TQ email you want the integration to authenticate as",
+            name: "Username",
+            description: "Your TQ username you want the integration to authenticate as (typically an email address)",
             default: "",
             type: "text",
             userCanEdit: true,
@@ -113,7 +113,7 @@ module.exports = {
         {
             key: "password",
             name: "Password",
-            description: "The password for the provided email you want the integration to authenticate as",
+            description: "The password for the provided username you want the integration to authenticate as",
             default: '',
             type: "password",
             userCanEdit: true,
@@ -122,7 +122,7 @@ module.exports = {
         {
             key: "client",
             name: "Client ID",
-            description: "The",
+            description: "The Client ID for your ThreatQ deployment.  (accessible at https://<yourserver>/assets/js/config.js)",
             default: '',
             type: "text",
             userCanEdit: true,
