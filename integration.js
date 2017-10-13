@@ -213,29 +213,48 @@ function _login(options, done) {
     Logger.debug({loginRequestOptions: requestOptions}, "Login Request Options");
 
     requestWithDefaults(requestOptions, function (err, response, body) {
-        _handleRequestError(err, response, body, options, function (err, body) {
-            if (err) {
-                Logger.error({err: err, body: body}, 'HTTP Error Authenticating with ThreatQuotient');
-                done(err);
-                return;
-            }
+        if (err) {
+            // generic HTTP error
+            done(_createJsonErrorPayload("Unable to connect to TQ server", null, '500', '2A', 'Login Request Failed', {
+                err: err,
+                //response: response,
+                body: body
+            }));
+            return;
+        }
 
-            if (response.statusCode !== 200) {
-                Logger.error({err: err, body: body}, 'Non 200 HTTP Code when Authenticating with ThreatQuotient');
-                done(err);
-                return;
-            }
+        if (response.statusCode === 400) {
+            // invalid username and password
+            done(_createJsonErrorPayload("User credentials are not valid", null, response.statusCode,
+                '2B', 'Login Request Failed', {
+                    err: err,
+                    //response: response,
+                    body: body
+                }));
+            return;
+        }
 
-            Logger.info({body:body}, "Login Body");
+        if (response.statusCode !== 200) {
+            done(_createJsonErrorPayload("User credentials are not valid", null, response.statusCode,
+                '2C', 'Login Request Failed', {
+                    err: err,
+                    //response: response,
+                    body: body
+                }));
+            return;
+        }
 
-            if(typeof body === 'object' && typeof body.access_token === 'string'){
-                done(null, body.access_token);
-            }else{
-                Logger.error({err: err, body: body}, 'Could not find access token in login response');
-                done(err);
-                return;
-            }
-        });
+        // success if body has an `access_token` in it
+        if (typeof body === 'object' && typeof body.access_token === 'string') {
+            done(null, body.access_token);
+        } else {
+            done(_createJsonErrorPayload("Could not find access token in login response", null, response.statusCode,
+                '2D', 'Login Request Failed', {
+                    err: err,
+                    //response: response,
+                    body: body
+                }));
+        }
     });
 }
 
