@@ -292,7 +292,7 @@ function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
             Logger.debug({body: body}, "LookupEntity Results");
 
 
-            body._entityObject = entityLookup[entitiesArray[0]];
+            body._entityObject = entityLookup[entitiesArray[0].toLowerCase()];
 
             done(null, body);
         });
