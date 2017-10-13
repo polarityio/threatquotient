@@ -1,7 +1,6 @@
 'use strict';
 
 let request = require('request');
-let _ = require('lodash');
 let util = require('util');
 let net = require('net');
 let config = require('./config/config');
@@ -48,10 +47,12 @@ function createEntityGroups(entities, options, cb) {
         }
     });
 
-// grab any "trailing" entities
+    // grab any "trailing" entities
     if (entityGroup.length > 0) {
         entityGroups.push(entityGroup);
     }
+
+    Logger.debug({entityGroups: entityGroups}, 'Entity Groups');
 
     _doLookup(entityGroups, entityLookup, options, cb);
 }
@@ -69,16 +70,12 @@ function _doLookup(entityGroups, entityLookup, options, cb) {
         let sessionToken = sessionManager.getSession(options.username, options.password);
 
         if (sessionToken) {
-// we are already authenticated.
+            // we are already authenticated.
             Logger.debug({numSession: sessionManager.getNumSessions()}, 'Session Already Exists');
-            /*
-             options.severityQueryString = SEVERITY_LEVELS_QUERY_FORMAT.slice(SEVERITY_LEVELS.indexOf(options.minimumSeverity))
-             .join(" OR " );*/
 
             _lookupWithSessionToken(entityGroups, entityLookup, options, sessionToken, function (err, results) {
                 if (err && err === ERROR_EXPIRED_SESSION) {
-// the session was expired so we need to retry
-// remove the session and try again
+                    // the session was expired so we need to retry remove the session and try again
                     Logger.debug({err: err}, "Clearing Session");
                     sessionManager.clearSession(options.username, options.password);
                     _doLookup(entityGroups, entityLookup, options, cb);
@@ -91,19 +88,20 @@ function _doLookup(entityGroups, entityLookup, options, cb) {
                 }
             });
         } else {
-// we are not authenticated so we need to login and get a sessionToken
+            // we are not authenticated so we need to login and get a sessionToken
             Logger.trace('Session does not exist. Creating Session');
             _login(options, function (err, sessionToken) {
                 Logger.debug({sessionToken: sessionToken}, 'Created new session');
                 if (err) {
                     Logger.error({err: err}, 'Error logging in');
-// Cover the case where an error is returned but the session was still created.
+                    // Cover the case where an error is returned but the session was still created.
                     if (err === ERROR_EXPIRED_SESSION) {
-                        cb('Invalid Username or Password');
+                        cb({
+                            detail: 'Session Expired While Trying to Login'
+                        });
                     } else {
                         cb(err);
                     }
-
                     return;
                 }
 
@@ -133,7 +131,7 @@ function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionTok
         Logger.debug({results: results}, "Results from async map lookupEntity");
 
         results.forEach(tqItem => {
-            if(tqItem.data.length > 0){
+            if (tqItem.data.length > 0) {
                 lookupResults.push({
                     entity: tqItem._entityObject,
                     data: {
@@ -144,7 +142,7 @@ function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionTok
                         }
                     }
                 });
-            }else{
+            } else {
                 // cache miss here
                 lookupResults.push({
                     entity: tqItem._entityObject,
@@ -160,8 +158,6 @@ function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionTok
 }
 
 function _handleRequestError(err, response, body, options, cb) {
-
-
     if (err) {
         cb(_createJsonErrorPayload("Unable to connect to TQ server", null, '500', '2A', 'ThreatQ HTTP Request Failed', {
             err: err,
@@ -171,9 +167,9 @@ function _handleRequestError(err, response, body, options, cb) {
         return;
     }
 
-// Sessions will expire after a set period of time which means we need to login again if we
-// receive this error.
-// 403 is returned if the session is invalid but also if you try to login with invalid creds.
+    // Sessions will expire after a set period of time which means we need to login again if we
+    // receive this error.
+    // 401 is returned if the session is expired.
     if (response.statusCode === 401) {
         Logger.debug({err: err, body: body}, "Received HTTP Status 401");
         cb(ERROR_EXPIRED_SESSION);
@@ -181,14 +177,10 @@ function _handleRequestError(err, response, body, options, cb) {
     }
 
     if (response.statusCode !== 200) {
-        if (body) {
-            cb(body);
-        } else {
-            cb(_createJsonErrorPayload(response.statusMessage, null, response.statusCode, '2A', 'STAXX HTTP Request Failed', {
-                response: response,
-                body: body
-            }));
-        }
+        cb(_createJsonErrorPayload(response.statusMessage, null, response.statusCode, '2A', 'STAXX HTTP Request Failed', {
+            response: response,
+            body: body
+        }));
         return;
     }
 
@@ -263,12 +255,12 @@ function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
     let requestOptions = {
         method: 'GET',
         uri: options.url + "/api/indicators/search",
-        qs:{
+        qs: {
             limit: 10,
             value: entitiesArray[0],
             with: "tags,score"
         },
-        headers:{
+        headers: {
             Authorization: "Bearer " + apiToken
         },
         json: true
@@ -288,11 +280,10 @@ function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
                 done(err);
                 return;
             }
-            Logger.debug({enttitiesArray: entityLookup[0]}, "What does the entities array look like");
-            Logger.debug({body: body}, "LookupEntity Results");
-
 
             body._entityObject = entityLookup[entitiesArray[0].toLowerCase()];
+
+            Logger.debug({body: body}, "_lookupEntity Results");
 
             done(null, body);
         });
@@ -397,7 +388,7 @@ function validateOptions(userOptions, cb) {
         (typeof userOptions.password.value === 'string' && userOptions.password.value.length === 0)) {
         errors.push({
             key: 'password',
-            message: 'You must provide your TQ email\'s password'
+            message: 'You must provide your TQ username\'s password'
         })
     }
     cb(null, errors);
