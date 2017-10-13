@@ -5,6 +5,7 @@ let _ = require('lodash');
 let util = require('util');
 let net = require('net');
 let config = require('./config/config');
+let {Address6} = require('ip-address');
 let async = require('async');
 let fs = require('fs');
 let SessionManager = require('./lib/session-manager');
@@ -38,7 +39,8 @@ function createEntityGroups(entities, options, cb) {
             entityGroup = [];
         }
 
-        if ((entity.isPrivateIP || IGNORED_IPS.has(entity.value)) && options.ignorePrivateIps) {
+        if (((entity.isPrivateIP || IGNORED_IPS.has(entity.value)) && options.ignorePrivateIps) ||
+            (entity.isIPv6 && !new Address6(entity.value).isValid())) {
             return;
         } else {
             entityGroup.push(entity.value);
