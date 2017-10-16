@@ -3,29 +3,23 @@
 <div class="dnsdball">
 {{#each block.data.details.allData as |item|}}
 
-    <div class = "url">
-        {{#if item.id }}
-        <a href="{{block.data.details.url}}{{item.id}}/details"> (View in ThreatQ) </a>
-        {{/if}}
-    </div>
-
-<div class = "rtype">
+<div class = "name">
     {{#if item.type.name}}
-    <i class = "fa fa-info-circle #ADADAD"></i><span class="type"> <b>Name: </b> </span>
-    {{item.type.name}}
+    <i class = "fa fa-info-circle #ADADAD"></i><span class="type"> <b> Type: </b> </span>
+    {{item.type.name}}  <a href="{{block.data.details.url}}{{item.id}}/details">  (View in ThreatQ) </a>
     {{/if}}
 </div>
 
-<div class = "count">
+<div class = "description">
     {{#if item.status.description}}
     <span class="counts"> Description: </span>
     <b>{{item.status.description}}</b>
     {{/if}}
 </div>
 
-<div class = "bali">
+<div class = "hash">
     {{#if item.hash}}
-    <span class="balis"> Hash: </span>
+    <span class="hashes"> Hash: </span>
     <b>{{item.hash}}</b>
     {{/if}}
 </div>
@@ -44,6 +38,18 @@
     {{/if}}
 </div>
 
+    <div class = "created">
+        {{#if item.created_at}}
+        <span class="created_at"> Created: </span>
+        <b>{{item.created_at}}</b>
+        {{/if}}
+    </div>
 
+    <div class = "updated">
+        {{#if item.updated_at}}
+        <span class="updated_at"> Last Updated: </span>
+        <b>{{item.updated_at}}</b>
+        {{/if}}
+    </div>
 {{/each}}
 </div>
