@@ -51,5 +51,12 @@
         <b>{{item.updated_at}}</b>
         {{/if}}
     </div>
+    {{#if (gt item.sources.length 0)}}
+        <div class = "updated">
+            <span class="updated_at"> Sources: </span>
+            {{!-- the single line spacing is important here to prevent an added whitespace in the HTML output --}}
+            {{#each item.sources as |source index|}}<b>{{if index ", "}}{{source.name}}</b>{{/each}}
+        </div>
+    {{/if}}
 {{/each}}
 </div>

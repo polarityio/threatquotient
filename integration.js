@@ -256,7 +256,7 @@ function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
         qs: {
             limit: 10,
             value: entitiesArray[0],
-            with: "tags,score"
+            with: "tags,score,sources"
         },
         headers: {
             Authorization: "Bearer " + apiToken
