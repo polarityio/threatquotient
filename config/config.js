@@ -24,13 +24,12 @@ module.exports = {
      */
     description: "Threat Quotient integration for IP's, hashes and domains",
     entityTypes: ['IPv4', 'IPv6', 'hash', 'domain'],
-    customTypes:[
+    customTypes: [
         {
             "key": 'cidr',
             "regex": /((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\/(3[0-2]|[1-2]?[0-9])/
-
         },
-        ],
+    ],
     /**
      * An array of style files (css or less) that will be included for your integration. Any styles specified in
      * the below files can be used in your custom template.
@@ -78,7 +77,7 @@ module.exports = {
          * to STAXX servers without valid SSL certificates.  Please note that we do NOT recommending setting this
          * to false in a production environment.
          */
-        rejectUnauthorized: false
+        rejectUnauthorized: true
     },
     logging: {
         // directory is relative to the this integrations directory
