@@ -4,7 +4,7 @@ Polarity's ThreatQuotient integration gives users access to automated MD5, SHA1,
 
 ThreatQuotient is the industry’s first threat intelligence platform designed to enable threat operations and management for your security organization. ThreatQ™ is the only solution with an integrated threat library, adaptive workbench and open exchange that help you to act upon the most relevant threats facing your organization and to get more out of your existing security infrastructure.  For more information please visit [https://www.threatq.com/](https://www.threatq.com/)
 
-| ![image](https://user-images.githubusercontent.com/306319/31645541-aa8d7b0e-b2ca-11e7-9a52-e70ff87695f5.png) |
+| ![image](https://user-images.githubusercontent.com/306319/31645591-e11e8654-b2ca-11e7-862c-7c3e6ba331bf.png) |
 |---|
 |*ThreatQ Example Screenshot* |
 
@@ -28,7 +28,7 @@ The password for the provided username you want the integration to authenticate 
 
 ### Client ID
 
-The Client ID for your ThreatQ deployment. (accessible at https://<yourserver>/assets/js/config.js)
+The Client ID for your ThreatQ deployment. (accessible at `https://<yourserver>/assets/js/config.js)`
 
 ### Ignore Private IPs
 
