@@ -102,7 +102,7 @@ module.exports = {
         {
             key: "url",
             name: "ThreatQ Server URL",
-            description: "The URL for your STAXX server which should include the schema (i.e., http, https) and port if required",
+            description: "The URL for your ThreatQ server which should include the schema (i.e., http, https) and port if required",
             default: "",
             type: "text",
             userCanEdit: false,
