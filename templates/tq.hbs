@@ -17,6 +17,20 @@
     {{/if}}
 </div>
 
+    <div class = "class">
+        {{#if item.class}}
+        <span class="counts"> Class: </span>
+        <b>{{item.class}}</b>
+        {{/if}}
+    </div>
+
+    <div class = "score">
+        {{#if item.score}}
+        <span class="scores"> Score: </span>
+        <b>{{item.score}}</b>
+        {{/if}}
+    </div>
+
 <div class = "hash">
     {{#if item.hash}}
     <span class="hashes"> Hash: </span>
@@ -25,16 +39,16 @@
 </div>
 
 <div class = "first">
-    {{#if item.touched_at}}
-    <span class="Ctimefirst"> Touched: </span>
-    <b>{{item.touched_at}}</b>
+    {{#if item.published_at}}
+    <span class="Ctimefirst"> Published: </span>
+    <b>{{item.published_at}}</b>
     {{/if}}
 </div>
 
 <div class = "last">
-    {{#if item.last_detected_at}}
-    <span class="Ctimelast"> Last Detected: </span>
-    <b>{{item.last_detected_at}}</b>
+    {{#if item.expired_at}}
+    <span class="Ctimelast"> Expired: </span>
+    <b>{{item.expired_at}}</b>
     {{/if}}
 </div>
 
@@ -51,6 +65,19 @@
         <b>{{item.updated_at}}</b>
         {{/if}}
     </div>
+
+    <div class = "adversaries">
+        {{#if item.adversaries}}
+        <span class="datas"> Adversary: </span>
+        {{/if}}
+        {{#if item.adversaries}}
+        {{#each item.adversaries as |data|}}
+        <li>{{data}}</li>
+        {{/each}}
+        {{else}}
+        {{/if}}
+    </div>
+
     {{#if (gt item.sources.length 0)}}
         <div class = "updated">
             <span class="updated_at"> Sources: </span>

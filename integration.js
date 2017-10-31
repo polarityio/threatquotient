@@ -135,7 +135,7 @@ function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionTok
                 lookupResults.push({
                     entity: tqItem._entityObject,
                     data: {
-                        summary: ["Class: " + tqItem.data[0].class + " Status: " + tqItem.data[0].status.name],
+                        summary: ["Score: " + tqItem.data[0].score + " Status: " + tqItem.data[0].status.name],
                         details: {
                             allData: tqItem.data,
                             url: tqUri
@@ -177,7 +177,7 @@ function _handleRequestError(err, response, body, options, cb) {
     }
 
     if (response.statusCode !== 200) {
-        cb(_createJsonErrorPayload(response.statusMessage, null, response.statusCode, '2A', 'STAXX HTTP Request Failed', {
+        cb(_createJsonErrorPayload(response.statusMessage, null, response.statusCode, '2A', 'TQ HTTP Request Failed', {
             response: response,
             body: body
         }));
@@ -251,12 +251,21 @@ function _login(options, done) {
 function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
     //do the lookup
     let requestOptions = {
-        method: 'GET',
-        uri: options.url + "/api/indicators/search",
+        method: 'POST',
+        uri: options.url + "/api/search/advanced",
         qs: {
-            limit: 10,
-            value: entitiesArray[0],
-            with: "tags,score,sources"
+            limit: 10
+        },
+        body: {
+            indicators: [
+                [
+                    {
+                        field: "indicator_value",
+                        operator: "is",
+                        value: entitiesArray[0],
+                    }
+                ]
+            ]
         },
         headers: {
             Authorization: "Bearer " + apiToken
