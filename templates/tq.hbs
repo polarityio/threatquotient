@@ -68,11 +68,11 @@
 
     <div class = "adversaries">
         {{#if item.adversaries}}
-        <span class="datas"> Adversary: </span>
+        <span class="datas"> Adversaries: </span>
         {{/if}}
         {{#if item.adversaries}}
-        {{#each item.adversaries as |data|}}
-        <li>{{data}}</li>
+        {{#each item.adversaries as |adversary|}}
+            <li><a href="{{block.data.details.url}}/adversaries/{{adversary.id}}/details">{{adversary.name}}</a></li>
         {{/each}}
         {{else}}
         {{/if}}
