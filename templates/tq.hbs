@@ -1,62 +1,376 @@
-
-
-<div class="dnsdball">
-{{#each block.data.details.allData as |item|}}
-
-<div class = "name">
-    {{#if item.type.name}}
-    <i class = "fa fa-info-circle #ADADAD"></i><span class="type"> <b> Type: </b> </span>
-    {{item.type.name}}  <a href="{{block.data.details.url}}{{item.id}}/details">  (View in ThreatQ) </a>
-    {{/if}}
+<div class="view-in-threatq">
+    <a href="{{block.userOptions.url}}/indicators/{{details.id}}/details">View in ThreatQ {{fa-icon "external-link-square" class="external-link-icon"}}</a>
 </div>
 
-<div class = "description">
-    {{#if item.status.description}}
-    <span class="counts"> Description: </span>
-    <b>{{item.status.description}}</b>
-    {{/if}}
-</div>
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a {{action "changeTab" "details"}} class="nav-link {{if (or (eq activeTab "details")(not activeTab)) "active"}}" href="#">Details</a>
+    </li>
+    <li class="nav-item">
+        <a {{action "changeTab" "comments"}} class="nav-link {{if (eq activeTab "comments") "active"}}" href="#">Comments ({{details.totalComments}})</a>
+    </li>
+</ul>
 
-<div class = "hash">
-    {{#if item.hash}}
-    <span class="hashes"> Hash: </span>
-    <b>{{item.hash}}</b>
-    {{/if}}
-</div>
+{{#unless block.isLoadingDetails}}
+    {{#if (or (eq activeTab "details")(not activeTab))}}
+        <div class="tab-container">
 
-<div class = "first">
-    {{#if item.touched_at}}
-    <span class="Ctimefirst"> Touched: </span>
-    <b>{{item.touched_at}}</b>
-    {{/if}}
-</div>
+            {{!--
+            <div class="action-bar">
+                <button class="tq-btn white" {{action "updateWatchlist"}}>
+                    {{fa-icon "binoculars" fixedWidth=true}}
+                        Add False Positive Attribute
+                </button>
+            </div>
+            --}}
+            <div>
+                <span class="p-title">{{fa-icon "info" fixedWidth=true}} Info</span>
+            </div>
+            {{#if details.type.name}}
+                <div>
+                    <span class="p-key">Type: </span>
+                    <span class="p-value">{{details.type.name}}</span>
+                </div>
+            {{/if}}
 
-<div class = "last">
-    {{#if item.last_detected_at}}
-    <span class="Ctimelast"> Last Detected: </span>
-    <b>{{item.last_detected_at}}</b>
-    {{/if}}
-</div>
+            {{#if details.class}}
+                <div>
+                    <span class="p-key">Class: </span>
+                    <span class="p-value">{{details.class}}</span>
+                </div>
+            {{/if}}
 
-    <div class = "created">
-        {{#if item.created_at}}
-        <span class="created_at"> Created: </span>
-        <b>{{item.created_at}}</b>
-        {{/if}}
-    </div>
+            {{#if details.score}}
+                <div>
+                    <span class="p-key">Score:</span>
+                    <span class="p-value">{{details.score}}</span>
+                </div>
+            {{/if}}
 
-    <div class = "updated">
-        {{#if item.updated_at}}
-        <span class="updated_at"> Last Updated: </span>
-        <b>{{item.updated_at}}</b>
-        {{/if}}
-    </div>
-    {{#if (gt item.sources.length 0)}}
-        <div class = "updated">
-            <span class="updated_at"> Sources: </span>
-            {{!-- the single line spacing is important here to prevent an added whitespace in the HTML output --}}
-            {{#each item.sources as |source index|}}<b>{{if index ", "}}{{source.name}}</b>{{/each}}
+            {{#if details.published_at}}
+                <div>
+                    <span class="p-key">Published:</span>
+                    <span class="p-value">{{details.published_at}}</span>
+                </div>
+            {{/if}}
+
+            {{#if details.expired_at}}
+                <div>
+                    <span class="p-key">Expired:</span>
+                    <span class="p-value">{{item.expired_at}}</span>
+                </div>
+            {{/if}}
+
+            {{#if details.created_at}}
+                <div>
+                    <span class="p-key">Created:</span>
+                    <span class="p-value">{{details.created_at}}</span>
+                </div>
+            {{/if}}
+
+            {{#if details.updated_at}}
+                <div>
+                    <span class="p-key">Last Updated:</span>
+                    <span class="p-value">{{item.updated_at}}</span>
+                </div>
+            {{/if}}
+
+            <div>
+                <span class="p-title">{{fa-icon "books" fixedWidth=true}} Sources ({{details.sources.length}})</span>
+            </div>
+            {{#if (gt details.sources.length 0)}}
+                <div>
+                    {{#each details.sources as |source|}}
+                        <span class="tq-source-tag">{{source.name}}</span>
+                    {{/each}}
+                </div>
+            {{/if}}
+
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="d-flex align-items-center">
+                    <span class="p-title">
+                        {{fa-icon "fingerprint" fixedWidth=true}} Attributes ({{details.attributes.length}})
+                    </span>
+                    <span class="add-attribute-icon mt-1 ml-1"{{action "showAddAttribute"}}>
+                        {{fa-icon "plus-circle" fixedWidth=true class="success"}}
+                    </span>
+                </span>
+                {{#if loadingAttributesMessage}}
+                    <span class="p-footnote mt-1">{{fa-icon "spinner-third" spin=true}} {{loadingAttributesMessage}}</span>
+                {{/if}}
+            </div>
+            {{#if showAddAttribute}}
+                <div class="add-attribute-container">
+                    <div class="mt-1">
+                        <span class="p-key">Attribute Type</span>
+                        <select class="mt-1 attribute-select" onchange={{action (mut selectedAddAttributeName) value="target.value"}}>
+                            <option value="" disabled selected>Select Attribute to Add ... </option>
+                            {{#each-in block.entity._threatQAttributeLookup as |attributeName attribute|}}
+                                <option value="{{attributeName}}">{{attributeName}}</option>
+                            {{/each-in}}
+                        </select>
+                    </div>
+                    <div class="mt-2">
+                        {{#if selectedAddAttributeName}}
+                            <span class="p-key">Attribute Value</span>
+                            {{#if (get (get block.entity._threatQAttributeLookup selectedAddAttributeName) "values")}}
+                                <select class="mt-1 attribute-select" onchange={{action (mut selectedAddAttributeValue) value="target.value"}}>
+                                    <option value="" disabled selected>Select Attribute Value ...</option>
+                                    {{#each (get (get block.entity._threatQAttributeLookup selectedAddAttributeName) "values") as |value|}}
+                                        <option value="{{value}}">{{value}}</option>
+                                    {{/each}}
+                                </select>
+                            {{else}}
+                                <div>
+                                    {{input placeholder="Attribute Value"
+                                            class="mt-1 attribute-input"
+                                            value=selectedAddAttributeValue
+                                            enter=(action "addAttribute" selectedAddAttributeName selectedAddAttributeValue)}}
+                                </div>
+                            {{/if}}
+                        {{/if}}
+                    </div>
+                    {{#if selectedAddAttributeName}}
+                        <div class="post-comment-button-container mt-2 d-flex align-items-center justify-content-between">
+                            <div>
+                                <button class="tq-btn btn-success" {{action "addAttribute" selectedAddAttributeName selectedAddAttributeValue}} type="submit">
+                                    Add Attribute
+                                </button>
+                                <button class="tq-btn white" {{action "hideAddAttributeModal"}} type="submit">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    {{/if}}
+                </div>
+            {{/if}}
+
+            {{#if attributeErrorMessage}}
+                <div class="p-red attribute-error-block mt-2 mb-2">
+                    <span>{{fa-icon "exclamation-triangle" fixedWidth=true}}  {{attributeErrorMessage}}</span>
+                </div>
+            {{/if}}
+            {{#if (gt details.attributes.length 0)}}
+                <table class="p-table">
+                    <thead>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th></th>
+                    </thead>
+                    <tbody>
+                    {{#each details.attributes as |attribute attributeIndex|}}
+                        {{#if attribute.__showEditModal}}
+                            <tr>
+                                <td class="font-weight-bold">{{attribute.name}}</td>
+                                <td class="font-weight-bold">{{attribute.value}}</td>
+                                <td></td>
+                            </tr>
+                            <tr class="edit-attribute-row">
+                                <td colspan="3">
+                                    <div class="arrow-up"></div>
+                                    <div class="edit-attribute-container">
+                                        <div class="input-container">
+                                        {{#if (get (get block.entity._threatQAttributeLookup attribute.name) "values")}}
+                                            <select class="attribute-select" onchange={{action (mut attribute._shadowValue) value="target.value"}}>
+                                                {{#each (get (get block.entity._threatQAttributeLookup attribute.name) "values") as |value|}}
+                                                    <option value="{{value}}" selected={{eq value attribute.value}}>{{value}}</option>
+                                                {{/each}}
+                                            </select>
+                                        {{else}}
+                                            {{input placeholder="Attribute Value"
+                                                    class="attribute-input"
+                                                    value=attribute._shadowValue
+                                                    enter=(action "updateAttribute" attributeIndex attribute.id attribute._shadowValue)}}
+                                        {{/if}}
+                                        </div>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <button class="tq-btn btn-success"{{action "updateAttribute" attributeIndex attribute.id attribute._shadowValue}}>Update</button>
+                                                <button class="tq-btn ml-1"{{action "hideAttributeEditModal" attributeIndex}}>Cancel</button>
+                                            </div>
+                                            <div {{action "deleteAttribute" attributeIndex attribute.id attribute.name}}>
+                                                {{fa-icon "trash-alt" class="delete-attribute-icon" fixedWidth=true}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {{!--
+                        <td>
+                            <span {{action "deleteAttribute" attribute.id attribute.name}}>
+                                {{fa-icon "times-circle"fixedWidth=true class="delete-attribute-icon"}}
+                            </span>
+                        </td>
+                        --}}
+                        {{else}}
+                            <tr>
+                                <td>{{attribute.name}}</td>
+                                <td>{{attribute.value}}</td>
+                                <td>
+                                    {{#if (get (get block.entity._threatQAttributeLookup attribute.name) "editable")}}
+                                        <span {{action "editAttribute" attributeIndex attribute.value}}>
+                                            {{fa-icon "pencil" fixedWidth=true class="edit-icon"}}
+                                        </span>
+                                    {{/if}}
+                                </td>
+                            </tr>
+                        {{/if}}
+                    {{/each}}
+                    </tbody>
+                </table>
+            {{/if}}
+
+
+            <div>
+                <span class="p-title">{{fa-icon "tags" fixedWidth=true}} Tags ({{details.tags.length}})</span>
+            </div>
+            {{#if (gt details.tags.length 0)}}
+                {{#each details.tags as | tag |}}
+                    <span class="tq-tag">
+                        {{tag.name}}
+                        {{#if block.userOptions.allowDeletingTags}}
+                            <span {{action "deleteTag" tag.id}}>
+                                {{fa-icon "times" class="tag-close-icon" fixedWidth=true}}
+                            </span>
+                        {{/if}}
+                    </span>
+                {{/each}}
+            {{/if}}
+
+            {{#if block.userOptions.allowAddingTag}}
+                <div class="input-group input-group-sm">
+                    {{input type="text" placeholder="Add Tag" enter=(action "addTag") class="form-control add-tag-input" value=newTagName}}
+                    <div class="input-group-append">
+                        <button class="btn btn-secondary btn-add-tag" type="button" disabled={{if (eq newTagName.length 0) true false}} {{action "addTag"}}>Add Tag</button>
+                    </div>
+                </div>
+            {{/if}}
+            <div>
+                <span class="p-title">{{fa-icon "fingerprint" fixedWidth=true}} Description</span>
+            </div>
+            {{#if details.description}}
+                <div class="description-container">
+                    {{{details.description}}}
+                </div>
+            {{/if}}
+
+            <div>
+                <span class="p-title">{{fa-icon "fire" fixedWidth=true}} Related Adversaries ({{details.adversaries.length}})</span>
+            </div>
+            {{#if (gt details.adversaries.length 0)}}
+                {{#each details.adversaries as |adversary|}}
+                 <a href="{{block.userOptions.url}}/adversaries/{{adversary.id}}/details">{{adversary.name}}</a>
+                {{/each}}
+            {{/if}}
         </div>
     {{/if}}
-{{/each}}
-</div>
+
+    {{#if (eq activeTab "comments")}}
+        <div class="tab-container">
+            <div class="comment-header d-flex align-items-center">
+                <div class="num-comments-container">
+                    {{#if loadingComments}}
+                        <span class="p-footnote">{{fa-icon "spinner-third" spin=true}} {{loadingCommentsMessage}} ...</span>
+                    {{else}}
+                        {{#if (eq details.comments.length details.totalComments)}}
+                            <span class="p-footnote">{{details.totalComments}} total comments</span>
+                        {{else}}
+                            <span class="p-footnote">Displaying {{details.comments.length}} of {{details.totalComments}} comments.</span>
+                        {{/if}}
+                    {{/if}}
+                </div>
+                <div class="add-comment-btn-container">
+                    <span class="p-action" {{action (mut showAddComment) true}}>{{fa-icon "plus-circle"}} Add Comment</span>
+                </div>
+            </div>
+
+
+
+                {{#if showAddComment}}
+                <div class="post-comment-container">
+                    <div>
+                        {{textarea value=newComment rows="3"}}
+                    </div>
+                    <div class="post-comment-button-container d-flex align-items-center justify-content-between">
+                        <div>
+                            <button class="tq-btn btn-success" {{action "createComment"}} type="submit" disabled={{createButtonDisabled}}>
+                                Add Comment
+                            </button>
+                            <button class="tq-btn white" {{action "closeAddComment"}} type="submit" disabled={{createButtonDisabled}}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                    {{#if createCommentError}}
+                        <div class="p-red comment-error-block">
+                            {{fa-icon "exclamation-triangle" fixedWidth=true}} {{createCommentError}}
+                        </div>
+                    {{/if}}
+                </div>
+                {{/if}}
+
+
+                <div class="comments-container">
+                {{#each details.comments as |comment commentIndex|}}
+                    <div class="comment-block">
+                        <div class="comment-titlebar">
+                            <span class="comment-username">{{comment.sources.0.name}}</span> ({{moment-format comment.created_at timeZone=timeZone}})
+                            {{#if (eq details.currentUserSourceId comment.sources.0.id)}}
+                                <span {{action "showDeleteCommentConfirmation" commentIndex}}>
+                                    {{fa-icon "trash-alt" fixedWidth class="delete-comment-icon"}}
+                                </span>
+                                <span {{action "showEditCommentModal" commentIndex}}>
+                                    {{fa-icon "pencil" fixedWidth class="edit-icon"}}
+                                </span>
+                            {{/if}}
+                        </div>
+                        <div class="arrow-up"></div>
+                        <div class="comment-body">
+                            {{#if comment.__showDeleteConfirmation}}
+                                <div class="p-bg-red delete-comment-warning-container">
+                                    <h1 class="show-delete-title">
+                                        Are you sure?
+                                    </h1>
+                                    <div class="show-delete-message">
+                                        Once deleted this comment cannot be recovered.
+                                    </div>
+                                    <div>
+                                        <button class="tq-btn btn-danger"{{action "deleteComment" comment.id}}>Delete Comment</button>
+                                        <button class="tq-btn"{{action "hideDeleteCommentConfirmation" commentIndex}}>Cancel</button>
+                                    </div>
+                                </div>
+                            {{else if comment.__showEditConfirmation}}
+                                <div class="edit-comment-container">
+                                    <h1 class="show-delete-title">
+                                        <textarea onchange={{action (mut comment._updateCommentValue) value="target.value"}} value={{readonly comment.value}} rows="3"></textarea>
+                                    </h1>
+                                    <div>
+                                        <button class="tq-btn btn-success"
+                                                disabled={{comment.__commentUpdating}}
+                                                {{action "updateComment" commentIndex comment.id comment._updateCommentValue}}>
+                                            Update Comment
+                                        </button>
+                                        <button class="tq-btn white"
+                                                disabled={{comment.__commentUpdating}}
+                                                {{action "hideEditCommentModal" commentIndex}}>Cancel</button>
+                                    </div>
+                                    {{#if comment._updateCommentError}}
+                                        <div class="p-red comment-error-block">
+                                            {{fa-icon "exclamation-triangle" fixedWidth=true}} {{comment._updateCommentError}}
+                                        </div>
+                                    {{/if}}
+                                </div>
+                            {{else}}
+                                {{comment.value}}
+                            {{/if}}
+                        </div>
+                    </div>
+                {{/each}}
+                </div>
+        </div>
+    {{/if}}
+{{/unless}}
+
+
+
+

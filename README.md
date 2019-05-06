@@ -2,11 +2,41 @@
 
 Polarity's ThreatQuotient integration gives users access to automated MD5, SHA1, SHA256, IPv4, IPv6, CIDR, and Domain lookups within the ThreatQ threat operations and management platform.
 
-ThreatQuotient is the industry’s first threat intelligence platform designed to enable threat operations and management for your security organization. ThreatQ™ is the only solution with an integrated threat library, adaptive workbench and open exchange that help you to act upon the most relevant threats facing your organization and to get more out of your existing security infrastructure.  For more information please visit [https://www.threatq.com/](https://www.threatq.com/)
+> ThreatQ™ is a threat intelligence platform designed to enable threat operations and management for your security organization. For more information please visit [https://www.threatq.com/](https://www.threatq.com/)
 
-| ![image](https://user-images.githubusercontent.com/306319/31645591-e11e8654-b2ca-11e7-862c-7c3e6ba331bf.png) |
-|---|
-|*ThreatQ Example Screenshot* |
+| ![image](images/indicator-tab.png) | ![image](images/comment-tab.png) |
+|---|---|
+|*ThreatQ Indicator Tab* | *ThreatQ Comments Tab* |
+
+## Configuring Attributes
+
+The ThreatQ integration supports providing a list of Indicator Attributes you would like displayed in the Overlay Window.
+These attributes are configured in the `config/config.js` file under the `threatQAttributes` property.
+
+The `threatQAttributes` property is an array of attribute objects where each attribute object has the following required
+and optional properties:
+
+* `name` (Required) - A string name for the attribute which should match the name of the attribute in ThreatQ (case sensitive)
+* `editable` (Required) - A boolean indicating whether the attribute can be edited by users (including deletion)
+* `values` (Optional) - An array of possible string values for the attribute
+
+```
+{
+    threatQAttributes: [{
+        name: 'Investigation',
+        editable: false
+    },
+    {
+      name: 'Confidence',
+      editable: ['low', 'medium', 'high']
+    },
+    {
+      name: 'False Positive',
+      editable: true,
+      values: ['true', 'false']
+   }]
+}
+```
 
 ## ThreatQuotient Integration Options
 
@@ -18,10 +48,6 @@ The URL for your ThreatQ server which should include the schema (i.e., http, htt
 
 Your TQ username you want the integration to authenticate as (typically an email address).
 
-### Lookup Files (Hashes)
-
-If checked, the VirusTotal integration will send MD5, SHA1, and SHA256 hashes to VirusTotal for lookup.
-
 ### Password
 
 The password for the provided username you want the integration to authenticate as.
@@ -30,9 +56,21 @@ The password for the provided username you want the integration to authenticate 
 
 The Client ID for your ThreatQ deployment. (accessible at `https://<yourserver>/assets/js/config.js)`
 
-### Ignore Private IPs
+### Enable Adding Tags
 
-If set to true, private IPs (RFC 1918 addresses) will not be looked up (includes 127.0.0.1, 0.0.0.0, and 255.255.255.255)
+If checked, users will be able to add new tags from the overlay window
+
+### Enable Deleting Tags
+
+If checked, users will be able to delete tags from the overlay window
+
+### Minimum Score
+
+The minimum indicator score required for indicators to be returned by the integration
+
+### Indicator Statuses
+
+Select 1 or more indicator status types to return. The integration will only search and return indicators with the specified statuses
 
 ## Installation Instructions
 
@@ -40,6 +78,6 @@ Installation instructions for integrations are provided on the [PolarityIO GitHu
 
 ## Polarity
 
-Polarity is a memory-augmentation platform that improves and accelerates analyst decision making.  For more information about the Polarity platform please see: 
+Polarity is a memory-augmentation platform that improves and accelerates analyst decision making.  For more information about the Polarity platform please see:
 
 https://polarity.io/
