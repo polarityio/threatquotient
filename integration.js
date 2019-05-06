@@ -1,299 +1,873 @@
 'use strict';
 
-let request = require('request');
-let util = require('util');
-let net = require('net');
-let config = require('./config/config');
-let {Address6} = require('ip-address');
-let async = require('async');
-let fs = require('fs');
-let SessionManager = require('./lib/session-manager');
-let Logger;
+const request = require('request');
+const config = require('./config/config');
+const { Address6 } = require('ip-address');
+const async = require('async');
+const fs = require('fs');
+const SessionManager = require('./lib/session-manager');
 
+let Logger;
 let requestWithDefaults;
 let sessionManager;
+let authenticatedRequest;
+let attributesConfigured = false;
 
+const attributeLookup = {};
+const MAX_AUTH_RETRIES = 2;
+const INDICATOR_STATUSES = {
+  1: 'Active',
+  2: 'Expired',
+  3: 'Indirect',
+  4: 'Review',
+  5: 'Whitelisted'
+};
 
-//process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+const INDICATOR_TYPES = {
+  ipv4: 11,
+  email: 3,
+  domain: 8,
+  md5: 12,
+  sha1: 16,
+  sha256: 17,
+  url: 21
+};
 
-const IGNORED_IPS = new Set([
-    '127.0.0.1',
-    '255.255.255.255',
-    '0.0.0.0'
-]);
+const IGNORED_IPS = new Set(['127.0.0.1', '255.255.255.255', '0.0.0.0']);
+const MAX_ENTITIES_PER_LOOKUP = 10;
 
-const ERROR_EXPIRED_SESSION = 'expired_session_error';
-const MAX_ENTITIES_PER_LOOKUP = 1;
+function doLookup(entities, options, cb) {
+  let lookupResults = [];
+  let { entityGroups, entityLookup } = createEntityGroups(entities, options);
 
-function createEntityGroups(entities, options, cb) {
-    let entityLookup = {};
-    let entityGroups = [];
-    let entityGroup = [];
+  options.__indicatorStatusValues = options.indicatorStatuses.map((statusObject) => {
+    // value is a string representing an integer so we convert it to an integer using the `+` syntax
+    return +statusObject.value;
+  });
 
-    Logger.debug({entities: entities, options: options}, 'Entities and Options');
+  async.map(
+    entityGroups,
+    (entityGroup, next) => {
+      _lookupEntityGroup(entityGroup, entityLookup, options, next);
+    },
+    (err, results) => {
+      if (err) {
+        return cb(err);
+      }
 
-    entities.forEach(function (entity) {
-        if (entityGroup.length >= MAX_ENTITIES_PER_LOOKUP) {
-            entityGroups.push(entityGroup);
-            entityGroup = [];
-        }
-
-        if (((entity.isPrivateIP || IGNORED_IPS.has(entity.value)) && options.ignorePrivateIps) ||
-            (entity.isIPv6 && !new Address6(entity.value).isValid()) || entity.types.indexOf('custom.cidr') > 0) {
-            return;
-        } else {
-            entityGroup.push(entity.value);
-            entityLookup[entity.value.toLowerCase()] = entity;
-        }
-    });
-
-    // grab any "trailing" entities
-    if (entityGroup.length > 0) {
-        entityGroups.push(entityGroup);
-    }
-
-    Logger.trace({entityGroups: entityGroups}, 'Entity Groups');
-
-    _doLookup(entityGroups, entityLookup, options, cb);
-}
-
-/**
- *
- * @param entities
- * @param options
- * @param cb
- */
-function _doLookup(entityGroups, entityLookup, options, cb) {
-    if (entityGroups.length > 0) {
-        Logger.trace({entityGroups: entityGroups}, 'Looking up Entity Groups');
-
-        let sessionToken = sessionManager.getSession(options.username, options.password);
-
-        if (sessionToken) {
-            // we are already authenticated.
-            Logger.trace({numSession: sessionManager.getNumSessions()}, 'Session Already Exists');
-
-            _lookupWithSessionToken(entityGroups, entityLookup, options, sessionToken, function (err, results) {
-                if (err && err === ERROR_EXPIRED_SESSION) {
-                    // the session was expired so we need to retry remove the session and try again
-                    Logger.trace({err: err}, "Clearing Session");
-                    sessionManager.clearSession(options.username, options.password);
-                    _doLookup(entityGroups, entityLookup, options, cb);
-                } else if (err) {
-                    Logger.error({err: err}, 'Error doing lookup');
-                    cb(err);
-                } else {
-                    Logger.trace({results: results}, "Logging results in dolookup");
-                    cb(null, results);
-                }
-            });
-        } else {
-            // we are not authenticated so we need to login and get a sessionToken
-            Logger.trace('Session does not exist. Creating Session');
-            _login(options, function (err, sessionToken) {
-                Logger.trace({sessionToken: sessionToken}, 'Created new session');
-                if (err) {
-                    Logger.error({err: err}, 'Error logging in');
-                    // Cover the case where an error is returned but the session was still created.
-                    if (err === ERROR_EXPIRED_SESSION) {
-                        cb({
-                            detail: 'Session Expired While Trying to Login'
-                        });
-                    } else {
-                        cb(err);
-                    }
-                    return;
-                }
-
-                sessionManager.setSession(options.username, options.password, sessionToken);
-                _doLookup(entityGroups, entityLookup, options, cb);
-            });
-        }
-    } else {
-        cb(null, []);
-    }
-}
-
-
-function _lookupWithSessionToken(entityGroups, entityLookup, options, sessionToken, cb) {
-    let lookupResults = [];
-
-    let tqUri = options.url + "/indicators/";
-
-    async.map(entityGroups, function (entityGroup, next) {
-        _lookupEntity(entityGroup, entityLookup, sessionToken, options, next);
-    }, function (err, results) {
-        if (err) {
-            cb(err);
-            return;
-        }
-
-        Logger.trace({results: results}, "Results from async map lookupEntity");
-
-        results.forEach(tqItem => {
-            if (tqItem.data.length > 0) {
-                lookupResults.push({
-                    entity: tqItem._entityObject,
-                    data: {
-                        summary: ["Score: " + tqItem.data[0].score + " Status: " + tqItem.data[0].status.name],
-                        details: {
-                            allData: tqItem.data,
-                            url: tqUri
-                        }
-                    }
-                });
-            } else {
-                // cache miss here
-                lookupResults.push({
-                    entity: tqItem._entityObject,
-                    data: null
-                });
-            }
+      results.forEach((groupResults) => {
+        groupResults.forEach((result) => {
+          lookupResults.push(result);
         });
+      });
 
-        Logger.trace({lookupResults: lookupResults}, 'Lookup Results');
-
-        cb(null, lookupResults);
-    });
+      cb(null, lookupResults);
+    }
+  );
 }
 
-function _handleRequestError(err, response, body, options, cb) {
-    if (err) {
-        cb(_createJsonErrorPayload("Unable to connect to TQ server", null, '500', '2A', 'ThreatQ HTTP Request Failed', {
-            err: err,
-            response: response,
-            body: body
-        }));
-        return;
+function createEntityGroups(entities, options) {
+  let entityLookup = {};
+  let entityGroups = [];
+  let entityGroup = [];
+
+  Logger.debug({ entities: entities, options: options }, 'Entities and Options');
+
+  entities.forEach(function(entity) {
+    if (entityGroup.length >= MAX_ENTITIES_PER_LOOKUP) {
+      entityGroups.push(entityGroup);
+      entityGroup = [];
     }
 
-    // Sessions will expire after a set period of time which means we need to login again if we
-    // receive this error.
-    // 401 is returned if the session is expired.
-    if (response.statusCode === 401) {
-        Logger.trace({err: err, body: body}, "Received HTTP Status 401");
-        cb(ERROR_EXPIRED_SESSION);
-        return;
+    if (
+      entity.isPrivateIP ||
+      IGNORED_IPS.has(entity.value) ||
+      (entity.isIPv6 && !new Address6(entity.value).isValid()) ||
+      entity.types.indexOf('custom.cidr') > 0
+    ) {
+      return;
+    } else {
+      entityGroup.push(entity);
+      entityLookup[entity.value.toLowerCase()] = entity;
+    }
+  });
+
+  // grab any "trailing" entities
+  if (entityGroup.length > 0) {
+    entityGroups.push(entityGroup);
+  }
+
+  Logger.trace({ entityGroups: entityGroups }, 'Entity Groups');
+
+  return {
+    entityGroups,
+    entityLookup
+  };
+}
+
+function _handleRestErrors(response, body) {
+  // 204: Successful Delete
+  // 201: Successful Creation
+  // 200: Successful Get
+  if (response.statusCode !== 200 && response.statusCode !== 201 && response.statusCode !== 204) {
+    return _createJsonErrorPayload(response.statusMessage, null, response.statusCode, '2A', 'TQ HTTP Request Failed', {
+      response: response,
+      body: body
+    });
+  }
+}
+
+function createToken(options, done) {
+  let sessionToken = sessionManager.getSession(options.username, options.password);
+
+  if (sessionToken) {
+    return done(null, sessionToken);
+  }
+
+  //do the lookup
+  let requestOptions = {
+    method: 'POST',
+    uri: options.url + '/api/token',
+    body: {
+      email: options.username,
+      password: options.password,
+      grant_type: 'password',
+      client_id: options.client
+    },
+    json: true
+  };
+
+  requestWithDefaults(requestOptions, function(err, response, body) {
+    if (err) {
+      // generic HTTP error
+      done(
+        _createJsonErrorPayload('Unable to connect to TQ server', null, '500', '2A', 'Login Request Failed', {
+          err: err,
+          //response: response,
+          body: body
+        })
+      );
+      return;
+    }
+
+    if (response.statusCode === 400) {
+      // invalid username and password
+      done(
+        _createJsonErrorPayload(
+          'User credentials are not valid',
+          null,
+          response.statusCode,
+          '2B',
+          'Login Request Failed',
+          {
+            err: err,
+            //response: response,
+            body: body
+          }
+        )
+      );
+      return;
     }
 
     if (response.statusCode !== 200) {
-        cb(_createJsonErrorPayload(response.statusMessage, null, response.statusCode, '2A', 'TQ HTTP Request Failed', {
-            response: response,
+      done(
+        _createJsonErrorPayload(
+          'User credentials are not valid',
+          null,
+          response.statusCode,
+          '2C',
+          'Login Request Failed',
+          {
+            err: err,
+            //response: response,
             body: body
-        }));
-        return;
+          }
+        )
+      );
+      return;
     }
 
-    cb(null, body);
+    // success if body has an `access_token` in it
+    if (typeof body === 'object' && typeof body.access_token === 'string') {
+      done(null, body.access_token);
+    } else {
+      done(
+        _createJsonErrorPayload(
+          'Could not find access token in login response',
+          null,
+          response.statusCode,
+          '2D',
+          'Login Request Failed',
+          {
+            err: err,
+            //response: response,
+            body: body
+          }
+        )
+      );
+    }
+  });
 }
 
+function _getEntityType(entity) {
+  if (entity.isIPv4) {
+    return 'ipv4';
+  }
+  if (entity.isDomain) {
+    return 'domain';
+  }
+  if (entity.isURL) {
+    return 'url';
+  }
+  if (entity.isSHA1) {
+    return 'sha1';
+  }
+  if (entity.isSHA256) {
+    return 'sha256';
+  }
+  if (entity.isMD5) {
+    return 'md5';
+  }
+  if (entity.isEmail) {
+    return 'email';
+  }
+}
+function _createSearchQuery(entityObjects, options) {
+  let indicators = [];
 
-function _login(options, done) {
-    //do the lookup
-    let requestOptions = {
-        method: 'POST',
-        uri: options.url + '/api/token',
-        body: {
-            email: options.username,
-            password: options.password,
-            grant_type: "password",
-            client_id: options.client,
-        },
-        json: true
-    };
+  entityObjects.forEach((entityObj) => {
+    indicators.push([
+      {
+        field: 'indicator_value',
+        operator: 'is',
+        value: entityObj.value
+      },
+      {
+        field: 'indicator_type',
+        operator: 'is',
+        value: INDICATOR_TYPES[_getEntityType(entityObj)]
+      },
+      {
+        field: 'indicator_score',
+        operator: 'greater than or equal to',
+        value: options.minimumScore.value
+      }
+    ]);
+  });
 
-    requestWithDefaults(requestOptions, function (err, response, body) {
+  return indicators;
+}
+
+function _lookupEntityGroup(entitiesArray, entityLookup, options, cb) {
+  let lookupGroupResults = [];
+  //do the lookup
+  let requestOptions = {
+    method: 'POST',
+    uri: options.url + '/api/search/advanced',
+    qs: {
+      limit: 10
+    },
+    body: {
+      indicators: _createSearchQuery(entitiesArray, options)
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    body.data.forEach((result) => {
+      let lookupResult = _createLookupResultObject(entityLookup[result.value.toLowerCase()], result, options);
+      if (lookupResult) {
+        lookupGroupResults.push(lookupResult);
+      }
+    });
+
+    cb(null, lookupGroupResults);
+  });
+}
+
+function onMessage(payload, options, cb) {
+  Logger.trace({ payload }, `Received ${payload.type} message`);
+  switch (payload.type) {
+    case 'CREATE_COMMENT':
+      createComment(payload.data.id, payload.data.comment, options, (err, result) => {
         if (err) {
-            // generic HTTP error
-            done(_createJsonErrorPayload("Unable to connect to TQ server", null, '500', '2A', 'Login Request Failed', {
-                err: err,
-                //response: response,
-                body: body
-            }));
-            return;
+          Logger.error(err, 'Error in createComment');
         }
-
-        if (response.statusCode === 400) {
-            // invalid username and password
-            done(_createJsonErrorPayload("User credentials are not valid", null, response.statusCode,
-                '2B', 'Login Request Failed', {
-                    err: err,
-                    //response: response,
-                    body: body
-                }));
-            return;
+        cb(err, result);
+      });
+      break;
+    case 'GET_COMMENTS':
+      getComments(payload.data.id, options, (err, comments) => {
+        if (err) {
+          Logger.error(err, 'Error in getComments');
         }
-
-        if (response.statusCode !== 200) {
-            done(_createJsonErrorPayload("User credentials are not valid", null, response.statusCode,
-                '2C', 'Login Request Failed', {
-                    err: err,
-                    //response: response,
-                    body: body
-                }));
-            return;
+        Logger.trace(comments, 'comments');
+        cb(err, comments);
+      });
+      break;
+    case 'DELETE_COMMENT':
+      deleteComment(payload.data.indicatorId, payload.data.commentId, options, (err) => {
+        if (err) {
+          Logger.error(err, 'Error in deleteComment');
         }
-
-        // success if body has an `access_token` in it
-        if (typeof body === 'object' && typeof body.access_token === 'string') {
-            done(null, body.access_token);
-        } else {
-            done(_createJsonErrorPayload("Could not find access token in login response", null, response.statusCode,
-                '2D', 'Login Request Failed', {
-                    err: err,
-                    //response: response,
-                    body: body
-                }));
+        cb(err, {});
+      });
+      break;
+    case 'UPDATE_COMMENT':
+      updateComment(payload.data.indicatorCommentId, payload.data.value, options, (err, comment) => {
+        if (err) {
+          Logger.error(err, 'Error in updateComment');
         }
-    });
+        cb(err, comment);
+      });
+      break;
+    case 'DELETE_TAG':
+      deleteTag(payload.data.indicatorId, payload.data.tagId, options, (err) => {
+        if (err) {
+          Logger.error(err, 'Error in deleteTag');
+        }
+        cb(err, {});
+      });
+      break;
+    case 'ADD_TAG':
+      addTag(payload.data.indicatorId, payload.data.tagName, options, (err, newTag) => {
+        if (err) {
+          Logger.error(err, 'Error in addTag');
+        }
+        Logger.trace({ newTag }, 'Returned new tag');
+        cb(err, newTag);
+      });
+      break;
+    case 'ADD_TO_WATCHLIST':
+      addToWatchlist(payload.data.indicatorId, options, (err, watchlist) => {
+        if (err) {
+          Logger.error(err, 'Error in addToWatchlist');
+        }
+        cb(err, watchlist);
+      });
+      break;
+    case 'REMOVE_FROM_WATCHLIST':
+      removeFromWatchlist(payload.data.indicatorId, payload.data.watchlistId, options, (err) => {
+        if (err) {
+          Logger.error(err, 'Error in removeFromWatchlist');
+        }
+        cb(err, {});
+      });
+      break;
+    case 'ADD_ATTRIBUTE':
+      addAttribute(
+        payload.data.indicatorId,
+        payload.data.attributeName,
+        payload.data.attributeValue,
+        options,
+        (err, attribute) => {
+          if (err) {
+            Logger.error(err, 'Error in addAttribute');
+          }
+          cb(err, attribute);
+        }
+      );
+      break;
+    case 'DELETE_ATTRIBUTE':
+      deleteAttribute(payload.data.indicatorId, payload.data.indicatorAttributeId, options, (err, attribute) => {
+        if (err) {
+          Logger.error(err, 'Error in removeFromWatchlist');
+        }
+        cb(err, attribute);
+      });
+      break;
+    case 'GET_ATTRIBUTES':
+      getAttributes(payload.data.id, options, (err, attributes) => {
+        if (err) {
+          Logger.error(err, 'Error in getAttributes');
+        }
+        Logger.trace(attributes, 'comments');
+        cb(err, attributes);
+      });
+      break;
+    case 'UPDATE_INDICATOR_ATTRIBUTE':
+      updateIndicatorAttribute(
+        payload.data.indicatorId,
+        payload.data.indicatorAttributeId,
+        payload.data.value,
+        options,
+        (err, attribute) => {
+          if (err) {
+            Logger.error(err, 'Error in updateIndicatorAttribute');
+          }
+          cb(err, attribute);
+        }
+      );
+    // case 'UPDATE_SCORE':
+    //   updateScore(payload.data.indicatorId, payload.data.score, options, (err, indicator) => {
+    //     if (err) {
+    //       Logger.error(err, 'Error in updateScore');
+    //     }
+    //     cb(err, indicator);
+    //   });
+    //   break;
+    case 'UPDATE_STATUS':
+      updateStatus(payload.data.indicatorId, payload.data.statusId, options, (err, indicator) => {
+        if (err) {
+          Logger.error(err, 'Error in updateStatus');
+        }
+        cb(err, indicator);
+      });
+      break;
+    default:
+      cb({
+        detail: 'Unexpected onMessage type.  Supported messages are `CREATE_COMMENT` and `GET_COMMENTS`'
+      });
+  }
 }
 
-function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
-    //do the lookup
+function updateIndicatorAttribute(indicatorId, indicatorAttributeId, value, options, cb) {
+  let requestOptions = {
+    method: 'PUT',
+    uri: `${options.url}/api/indicators/${indicatorId}/attributes/${indicatorAttributeId}`,
+    body: {
+      value: value
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    // returns attribute
+    cb(null, body.data);
+  });
+}
+
+function updateScore(indicatorId, score, options, cb) {
+  let requestOptions = {
+    method: 'PUT',
+    uri: `${options.url}/api/indicator/${indicatorId}/scores`,
+    body: {
+      manual_score: score
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    // returns indicator
+    cb(null, body.data);
+  });
+}
+
+function deleteAttribute(indicatorId, indicatorAttributeId, options, cb) {
+  let requestOptions = {
+    method: 'DELETE',
+    uri: `${options.url}/api/indicators/${indicatorId}/attributes/${indicatorAttributeId}`,
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    // returns attribute
+    cb(null, {});
+  });
+}
+
+function addAttribute(indicatorId, attributeName, attributeValue, options, cb) {
+  let requestOptions = {
+    method: 'POST',
+    uri: `${options.url}/api/indicators/${indicatorId}/attributes`,
+    body: [
+      {
+        name: attributeName,
+        value: attributeValue,
+        sources: []
+      }
+    ],
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    // returns attribute
+    cb(null, body.data[0]);
+  });
+}
+
+/**
+ * Updates the given indicatorId with the provided statusId
+ * 1: 'Active',
+ * 2: 'Expired',
+ * 3: 'Indirect',
+ * 4: 'Review',
+ * 5: 'Whitelisted'
+ *
+ * @param indicatorId
+ * @param statusId
+ * @param options
+ * @param cb
+ */
+function updateStatus(indicatorId, statusId, options, cb) {
+  let requestOptions = {
+    method: 'PUT',
+    uri: `${options.url}/api/indicators/${indicatorId}`,
+    body: {
+      status_id: statusId
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    // returns indicator
+    cb(null, body.data);
+  });
+}
+
+function addToWatchlist(indicatorId, options, cb) {
+  let requestOptions = {
+    method: 'POST',
+    uri: `${options.url}/api/indicators/${indicatorId}/watchlist`,
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, result) {
+    if (err) {
+      return cb(err);
+    }
+
+    cb(null, result.data);
+  });
+}
+
+function removeFromWatchlist(indicatorId, watchlistId, options, cb) {
+  let requestOptions = {
+    method: 'DELETE',
+    uri: `${options.url}/api/indicators/${indicatorId}/watchlist/${watchlistId}`,
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err) {
+    if (err) {
+      return cb(err);
+    }
+
+    cb(null, null);
+  });
+}
+
+function deleteTag(indicatorId, tagId, options, cb) {
+  Logger.trace({ indicatorId, tagId, options }, 'deleteTag');
+  let requestOptions = {
+    method: 'DELETE',
+    uri: `${options.url}/api/indicators/${indicatorId}/tags/${tagId}`,
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err) {
+    if (err) {
+      return cb(err);
+    }
+
+    cb(null, null);
+  });
+}
+
+function addTag(indicatorId, tagName, options, cb) {
+  let requestOptions = {
+    method: 'POST',
+    uri: `${options.url}/api/indicators/${indicatorId}/tags/`,
+    body: {
+      name: tagName
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    Logger.trace(body);
+    if (Array.isArray(body.data) && body.data.length === 1) {
+      cb(null, body.data[0]);
+    } else {
+      let invalidResponseErr = {
+        indicatorId,
+        tagName,
+        body,
+        detail: 'Unexpected response from add tags call'
+      };
+      Logger.error(invalidResponseErr);
+      cb(invalidResponseErr);
+    }
+  });
+}
+
+function deleteComment(indicatorId, commentId, options, cb) {
+  Logger.trace({ indicatorId, commentId, options }, 'deleteComment');
+  let requestOptions = {
+    method: 'DELETE',
+    uri: `${options.url}/api/indicators/${indicatorId}/comments/${commentId}`,
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err) {
+    if (err) {
+      Logger.error(err, 'Error deleting comment');
+      return cb(err);
+    }
+
+    cb(null, null);
+  });
+}
+
+function getComments(id, options, cb) {
+  //do the lookup
+  let requestOptions = {
+    method: 'GET',
+    uri: `${options.url}/api/indicators/${id}/comments`,
+    qs: {
+      limit: 30,
+      sort: '-created_at',
+      with: 'sources' //this includes the user that created the comment
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    Logger.trace(body);
+    cb(null, {
+      totalComments: body.total,
+      comments: body.data
+    });
+  });
+}
+
+function getAttributes(id, options, cb) {
+  //do the lookup
+  let requestOptions = {
+    method: 'GET',
+    uri: `${options.url}/api/indicators/${id}/attributes`,
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    Logger.trace(body);
+    cb(null, {
+      totalAttributes: body.total,
+      attributes: _pickConfiguredAttributes(body.data)
+    });
+  });
+}
+
+function getDetails(id, options, cb) {
+  //do the lookup
+  let requestOptions = {
+    method: 'GET',
+    uri: `${options.url}/api/indicators/${id}`,
+    qs: {
+      with: 'tags,adversaries,attributes,indicators,watchlist'
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+    cb(null, body.data);
+  });
+}
+
+function updateComment(indicatorCommentId, value, options, cb) {
     let requestOptions = {
-        method: 'POST',
-        uri: options.url + "/api/search/advanced",
-        qs: {
-            limit: 10
-        },
+        method: 'PUT',
+        uri: `${options.url}/api/indicators/comments/${indicatorCommentId}`,
         body: {
-            indicators: [
-                [
-                    {
-                        field: "indicator_value",
-                        operator: "is",
-                        value: entitiesArray[0],
-                    }
-                ]
-            ]
-        },
-        headers: {
-            Authorization: "Bearer " + apiToken
+            value: value
         },
         json: true
     };
 
+    Logger.trace(requestOptions);
 
-    requestWithDefaults(requestOptions, function (err, response, body) {
-        _handleRequestError(err, response, body, options, function (err, body) {
-            if (err) {
-                if (err === ERROR_EXPIRED_SESSION) {
-                    Logger.trace({err: err}, 'Session Expired');
-                } else {
-                    Logger.error({err: err}, 'Error Looking up Entity');
-                }
+    authenticatedRequest(options, requestOptions, function(err, response, body) {
+        if (err) {
+            return cb(err);
+        }
 
-                done(err);
-                return;
-            }
-
-            body._entityObject = entityLookup[entitiesArray[0].toLowerCase()];
-
-            Logger.trace({body: body}, "_lookupEntity Results");
-
-            done(null, body);
-        });
+        // returns newly updated comment
+        cb(null, body.data);
     });
+}
+
+function createComment(id, note, options, cb) {
+  //do the lookup
+  let requestOptions = {
+    method: 'POST',
+    uri: `${options.url}/api/indicators/${id}/comments`,
+    body: {
+      value: note
+    },
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    // returns newly created comment
+    cb(null, body.data);
+  });
+}
+
+function getCurrentUser(options, cb) {
+  let requestOptions = {
+    method: 'GET',
+    uri: `${options.url}/api/users/current`,
+    json: true
+  };
+
+  Logger.trace(requestOptions);
+
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
+
+    if (body && body.data && body.data.source) {
+      // return current user source id
+      cb(null, body.data.source.id);
+    } else {
+      cb({
+        body: body,
+        detail: 'Could not retrieve current user'
+      });
+    }
+  });
+}
+
+function onDetails(lookupObject, options, cb) {
+  async.parallel(
+    {
+      details: function(done) {
+        getDetails(lookupObject.data.details.id, options, done);
+      },
+      comments: function(done) {
+        getComments(lookupObject.data.details.id, options, done);
+      },
+      currentUser: function(done) {
+        getCurrentUser(options, done);
+      }
+    },
+    (err, results) => {
+      if (err) {
+        return cb(err);
+      }
+
+      lookupObject.data.details.currentUserSourceId = results.currentUser;
+      lookupObject.data.details.watchlist = results.details.watchlist;
+      lookupObject.data.details.adversaries = results.details.adversaries;
+      lookupObject.data.details.attributes = _pickConfiguredAttributes(results.details.attributes);
+      lookupObject.data.details.tags = results.details.tags;
+      lookupObject.data.details.indicators = results.details.indicators;
+      lookupObject.data.details.description = results.details.description;
+      lookupObject.data.details.comments = results.comments.comments;
+      lookupObject.data.details.totalComments = results.comments.totalComments;
+
+      cb(null, lookupObject.data);
+    }
+  );
+}
+
+function _pickConfiguredAttributes(attributes) {
+  let pickedAttributes = [];
+  if (attributesConfigured) {
+    attributes.forEach((attr) => {
+      if (attributeLookup[attr.name]) {
+        pickedAttributes.push(attr);
+      }
+    });
+  }
+  return pickedAttributes;
+}
+
+function _createLookupResultObject(entityObj, result, options) {
+  // filter out any results that are are not of a status set by the user
+  if (
+    typeof result.status !== 'undefined' &&
+    typeof result.status.id !== 'undefined' &&
+    !options.__indicatorStatusValues.includes(result.status.id)
+  ) {
+    return;
+  }
+
+  // store the lookup values on the entity object as the entity object is not cached by the server
+  // This means that if the admin changes the attributes, the cache does not have to be invalidated
+  entityObj._threatQAttributeLookup = attributeLookup;
+
+  return {
+    entity: entityObj,
+    data: {
+      summary: [`Score: ${result.score}`, `Status: ${result.status.name}`],
+      details: result
+    }
+  };
 }
 
 /**
@@ -307,109 +881,174 @@ function _lookupEntity(entitiesArray, entityLookup, apiToken, options, done) {
  * @private
  */
 function _createJsonErrorPayload(msg, pointer, httpCode, code, title, meta) {
-    return {
-        errors: [
-            _createJsonErrorObject(msg, pointer, httpCode, code, title, meta)
-        ]
-    }
+  return {
+    errors: [_createJsonErrorObject(msg, pointer, httpCode, code, title, meta)]
+  };
 }
 
 function _createJsonErrorObject(msg, pointer, httpCode, code, title, meta) {
-    let error = {
-        detail: msg,
-        status: httpCode.toString(),
-        title: title,
-        code: 'TQ_' + code.toString()
+  let error = {
+    detail: msg,
+    status: httpCode.toString(),
+    title: title,
+    code: 'TQ_' + code.toString()
+  };
+
+  if (pointer) {
+    error.source = {
+      pointer: pointer
     };
+  }
 
-    if (pointer) {
-        error.source = {
-            pointer: pointer
-        };
-    }
+  if (meta) {
+    error.meta = meta;
+  }
 
-    if (meta) {
-        error.meta = meta;
-    }
-
-    return error;
+  return error;
 }
 
 function startup(logger) {
-    Logger = logger;
+  Logger = logger;
 
+  let defaults = {};
 
-    let defaults = {};
+  if (typeof config.request.cert === 'string' && config.request.cert.length > 0) {
+    defaults.cert = fs.readFileSync(config.request.cert);
+  }
 
-    if (typeof config.request.cert === 'string' && config.request.cert.length > 0) {
-        defaults.cert = fs.readFileSync(config.request.cert);
+  if (typeof config.request.key === 'string' && config.request.key.length > 0) {
+    defaults.key = fs.readFileSync(config.request.key);
+  }
+
+  if (typeof config.request.passphrase === 'string' && config.request.passphrase.length > 0) {
+    defaults.passphrase = config.request.passphrase;
+  }
+
+  if (typeof config.request.ca === 'string' && config.request.ca.length > 0) {
+    defaults.ca = fs.readFileSync(config.request.ca);
+  }
+
+  if (typeof config.request.proxy === 'string' && config.request.proxy.length > 0) {
+    defaults.proxy = config.request.proxy;
+  }
+
+  if (typeof config.request.rejectUnauthorized === 'boolean') {
+    defaults.rejectUnauthorized = config.request.rejectUnauthorized;
+  }
+
+  if (Array.isArray(config.threatQAttributes)) {
+    config.threatQAttributes.forEach((attribute) => {
+      attributesConfigured = true;
+      attributeLookup[attribute.name] = attribute;
+    });
+  }
+
+  sessionManager = new SessionManager(Logger);
+
+  requestWithDefaults = request.defaults(defaults);
+
+  authenticatedRequest = (options, requestOptions, cb, requestCounter = 0) => {
+    if (requestCounter === MAX_AUTH_RETRIES) {
+      // We reached the maximum number of auth retries
+      return cb({
+        detail: `Attempted to authenticate ${MAX_AUTH_RETRIES} times but failed authentication`
+      });
     }
 
-    if (typeof config.request.key === 'string' && config.request.key.length > 0) {
-        defaults.key = fs.readFileSync(config.request.key);
-    }
+    createToken(options, function(err, token) {
+      if (err) {
+        Logger.error({ err: err }, 'Error getting token');
+        return cb({
+          err: err,
+          detail: 'Error creating authentication token'
+        });
+      }
 
-    if (typeof config.request.passphrase === 'string' && config.request.passphrase.length > 0) {
-        defaults.passphrase = config.request.passphrase;
-    }
+      requestOptions.headers = { Authorization: 'Bearer ' + token };
 
-    if (typeof config.request.ca === 'string' && config.request.ca.length > 0) {
-        defaults.ca = fs.readFileSync(config.request.ca);
-    }
+      requestWithDefaults(requestOptions, (err, resp, body) => {
+        if (err) {
+          return _createJsonErrorPayload(
+            'Unable to connect to TQ server',
+            null,
+            '500',
+            '2A',
+            'ThreatQ HTTP Request Failed',
+            {
+              err: err,
+              response: response,
+              body: body
+            }
+          );
+        }
 
-    if (typeof config.request.proxy === 'string' && config.request.proxy.length > 0) {
-        defaults.proxy = config.request.proxy;
-    }
+        if (resp.statusCode === 401) {
+          // Unable to authenticate so we attempt to get a new token
+          sessionManager.clearSession(options.username, options.password);
 
+          authenticatedRequest(options, requestOptions, cb, ++requestCounter);
+          return;
+        }
 
-    if (typeof config.request.rejectUnauthorized === 'boolean') {
-        defaults.rejectUnauthorized = config.request.rejectUnauthorized;
-    }
+        let restError = _handleRestErrors(resp, body);
+        if (restError) {
+          return cb(restError);
+        }
 
-    sessionManager = new SessionManager(Logger);
-
-    requestWithDefaults = request.defaults(defaults);
+        cb(null, resp, body);
+      });
+    });
+  };
 }
 
-
 function validateOptions(userOptions, cb) {
-    let errors = [];
-    if (typeof userOptions.url.value !== 'string' ||
-        (typeof userOptions.url.value === 'string' && userOptions.url.value.length === 0)) {
-        errors.push({
-            key: 'url',
-            message: 'You must provide your TQ server URL'
-        })
-    }
+  let errors = [];
+  if (
+    typeof userOptions.url.value !== 'string' ||
+    (typeof userOptions.url.value === 'string' && userOptions.url.value.length === 0)
+  ) {
+    errors.push({
+      key: 'url',
+      message: 'You must provide your TQ server URL'
+    });
+  }
 
-    if (typeof userOptions.username.value !== 'string' ||
-        (typeof userOptions.username.value === 'string' && userOptions.username.value.length === 0)) {
-        errors.push({
-            key: 'username',
-            message: 'You must provide your TQ username'
-        })
-    }
+  if (
+    typeof userOptions.username.value !== 'string' ||
+    (typeof userOptions.username.value === 'string' && userOptions.username.value.length === 0)
+  ) {
+    errors.push({
+      key: 'username',
+      message: 'You must provide your TQ username'
+    });
+  }
 
-    if (typeof userOptions.password.value !== 'string' ||
-        (typeof userOptions.password.value === 'string' && userOptions.password.value.length === 0)) {
-        errors.push({
-            key: 'password',
-            message: 'You must provide your TQ username\'s password'
-        })
-    }
+  if (
+    typeof userOptions.password.value !== 'string' ||
+    (typeof userOptions.password.value === 'string' && userOptions.password.value.length === 0)
+  ) {
+    errors.push({
+      key: 'password',
+      message: "You must provide your TQ username's password"
+    });
+  }
 
-    if (typeof userOptions.client.value !== 'string' ||
-        (typeof userOptions.client.value === 'string' && userOptions.client.value.length === 0)) {
-        errors.push({
-            key: 'username',
-            message: 'You must provide your TQ username'
-        })
-    }
-    cb(null, errors);
+  if (
+    typeof userOptions.client.value !== 'string' ||
+    (typeof userOptions.client.value === 'string' && userOptions.client.value.length === 0)
+  ) {
+    errors.push({
+      key: 'username',
+      message: 'You must provide your TQ username'
+    });
+  }
+  cb(null, errors);
 }
 
 module.exports = {
-    doLookup: createEntityGroups,
-    startup: startup,
-    validateOptions: validateOptions
+  doLookup: doLookup,
+  startup: startup,
+  validateOptions: validateOptions,
+  onDetails: onDetails,
+  onMessage: onMessage
 };

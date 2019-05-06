@@ -1,79 +1,254 @@
-/*
- All integrations are namespaced with the class `<integration_id>-integration`.  When creating custom
- CSS to style your integration you should ensure that all your classes are appropriately namespaced to prevent
- your css from affecting other integrations.  Note that the integration id is based off the name of the integration
- directory.
-*/
-.tq-integration {
+.view-in-threatq {
 }
 
-div.name {
-  text-align: left;
-  font-size: 12px;
-  padding-left: 5px;
-  font-weight: 600;
-  color: #ADADAD;
+.external-link-icon {
+  font-size: 8px;
 }
 
-
-div.description {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+.description-container {
+  overflow-y: auto;
 }
 
-div.hash {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+/* width */
+::-webkit-scrollbar {
+  height: 5px;
 }
 
-div.first {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+.tq-tag {
+  background-color: #4e6e8b;
+  padding: 3px 5px;
+  border-radius: 5px;
+  color: #fff;
+  margin: 0 2px 5px 0;
+  display: inline-block;
+  font-weight: normal;
 }
 
-div.score {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+.tq-source-tag {
+  background-color: #cbd0d0;
+  padding: 3px 5px;
+  border-radius: 5px;
+  color: #000;
+  margin: 0 2px 5px 0;
+  display: inline-block;
+  font-weight: normal;
 }
 
-div.last {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
-}
-div.created {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+.tag-close-icon {
+  font-size: 10px;
+  color: #fff;
 }
 
-div.adversaries {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+.tag-close-icon:hover {
+  color: red;
 }
 
-div.class {
-  text-align: left;
-  font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+div.tab-container {
+  margin-top: 5px;
 }
 
-div.updated {
-  text-align: left;
+.external-icon {
+  font-size: 8px;
+}
+
+.nav-tabs {
+  margin-top: 20px;
+}
+
+.tab-loading-indicator {
+  margin: 10px 0 0 0;
+}
+
+.tq-btn {
+  border-radius: 4px;
+
+  &.white {
+    background-color: white;
+  }
+
+  &.white:hover {
+    background-color: #ddd;
+  }
+}
+
+.comments-container {
+  max-height: 500px;
+  overflow-y: scroll;
+  padding-right: 5px;
+  position: relative;
+
+  .delete-comment-warning-container,
+  .edit-comment-container {
+    background-color: #fff;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    color: #000;
+    border-radius: 4px;
+    padding: 10px;
+    width: 100%;
+    z-index: 9999;
+
+    .show-delete-message {
+      margin-bottom: 5px;
+    }
+
+    .show-delete-title {
+      margin-bottom: 5px;
+    }
+  }
+}
+
+.comment-header {
+  color: #9a9a9a;
+  margin-bottom: 5px;
+
+  .num-comments-container {
+    padding: 0px 5px 0px 0px;
+    flex: 1 0 auto;
+  }
+
+  .add-comment-btn-container {
+    flex: 0 0 100px;
+  }
+}
+
+.delete-attribute-icon {
+  color: #9a9a9a;
+  cursor: pointer;
+}
+
+.delete-attribute-icon:hover {
+  color: red;
+}
+
+.edit-attribute-container {
+  background-color: #fff;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  color: #000;
+  border-radius: 4px;
+  padding: 10px;
+  width: 100%;
+  z-index: 9999;
+
+  .input-container {
+    margin-bottom: 5px;
+  }
+}
+
+.edit-icon {
+  color: #9a9a9a;
+  cursor: pointer;
+}
+
+.edit-icon:hover {
+  color: #7bc942;
+}
+
+.attribute-select {
+  width: 100%;
+}
+
+.attribute-input {
+  width: 100%;
+}
+
+.comment-error-block {
+  margin-top: 10px;
+}
+
+.comment-block {
+  margin: 0px;
+  padding: 20px 0px 0px 0px;
+
+  .comment-titlebar {
+    margin-bottom: 8px;
+
+    .delete-comment-icon {
+      color: #9a9a9a;
+      cursor: pointer;
+      float: right;
+      margin-right: 5px;
+    }
+
+    .edit-icon {
+      float: right;
+      margin-right: 5px;
+    }
+
+    .delete-comment-icon:hover {
+      color: red;
+    }
+
+    .comment-username {
+      font-weight: 500;
+    }
+  }
+
+  .comment-body {
+    //background-color: #b7d1ec;
+    background-color: #ddd;
+    padding: 5px;
+    border-radius: 4px;
+  }
+
+  .arrow-up {
+    margin-top: -5px;
+    margin-left: 8px;
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #ddd;
+  }
+}
+
+tr.edit-attribute-row {
+  background-color: #fff !important;
+}
+
+.arrow-up {
+  margin-top: -5px;
+  margin-left: 8px;
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid #fff;
+}
+
+.add-attribute-icon {
   font-size: 12px;
-  font-weight: 300;
-  padding-left: 5px;
+  color: #7bc942;
+}
+.add-attribute-icon:hover {
+  color: #63a830;
+}
+
+.comment-block:last-child {
+  border-bottom: none;
+}
+
+.reload-comments {
+  float: right;
+  padding: 5px 0 5px 0;
+}
+
+.add-attribute-container {
+  background-color: #ddd;
+  border-radius: 4px;
+  padding: 5px;
+}
+
+.post-comment-button-container {
+  text-align: right;
+}
+
+.post-comment-container {
+  border-bottom: none;
+  padding-bottom: 10px;
+}
+
+textarea {
+  width: 100%;
 }
