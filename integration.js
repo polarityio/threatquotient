@@ -3,6 +3,7 @@
 const request = require('request');
 const config = require('./config/config');
 const { Address6 } = require('ip-address');
+const threatQConfig = require('./config/threatq.config');
 const async = require('async');
 const fs = require('fs');
 const SessionManager = require('./lib/session-manager');
@@ -15,24 +16,6 @@ let attributesConfigured = false;
 
 const attributeLookup = {};
 const MAX_AUTH_RETRIES = 2;
-const INDICATOR_STATUSES = {
-  1: 'Active',
-  2: 'Expired',
-  3: 'Indirect',
-  4: 'Review',
-  5: 'Whitelisted'
-};
-
-const INDICATOR_TYPES = {
-  ipv4: 11,
-  email: 3,
-  domain: 8,
-  md5: 12,
-  sha1: 16,
-  sha256: 17,
-  url: 21
-};
-
 const IGNORED_IPS = new Set(['127.0.0.1', '255.255.255.255', '0.0.0.0']);
 const MAX_ENTITIES_PER_LOOKUP = 10;
 
@@ -245,7 +228,7 @@ function _createSearchQuery(entityObjects, options) {
       {
         field: 'indicator_type',
         operator: 'is',
-        value: INDICATOR_TYPES[_getEntityType(entityObj)]
+        value: threatQConfig.threatQIndicatorTypes[_getEntityType(entityObj)]
       },
       {
         field: 'indicator_score',
@@ -936,8 +919,8 @@ function startup(logger) {
     defaults.rejectUnauthorized = config.request.rejectUnauthorized;
   }
 
-  if (Array.isArray(config.threatQAttributes)) {
-    config.threatQAttributes.forEach((attribute) => {
+  if (Array.isArray(threatQConfig.threatQAttributes)) {
+      threatQConfig.threatQAttributes.forEach((attribute) => {
       attributesConfigured = true;
       attributeLookup[attribute.name] = attribute;
     });
