@@ -8,10 +8,52 @@ Polarity's ThreatQuotient integration gives users access to automated MD5, SHA1,
 |---|---|
 |*ThreatQ Indicator Tab* | *ThreatQ Comments Tab* |
 
+
+## Configuring Indicator Types
+
+The ThreatQ integration requires that you provide a mapping of indicator types to their respective indicator IDs in your
+ThreatQ instance.  This information can be configured in the `config/threatq.config.js` file under the `threatQIndicatorTypes`
+property.  This property is an object which has a supported indicator type as the key, and the numeric ID value for that type.
+As each ThreatQ instance has different indicator IDs you will need to modify this value with your own indicator IDs.
+
+The supported indicator types are:
+
+* ipv4
+* email
+* domain
+* md5
+* sha1
+* sha256
+* url
+
+You can specify the indicator ID for each type like this:
+
+```
+  threatQIndicatorTypes: {
+    ipv4: 11,
+    email: 3,
+    domain: 8,
+    md5: 12,
+    sha1: 16,
+    sha256: 17,
+    url: 21
+  }
+```
+
+The simplest way to get the indicator type values is to login into your ThreatQ instance via your browser, and then navigate
+to the following URL:
+
+```
+https://<your-threatq-server>/api/indicator/types
+```
+
+> Note that if this endpoint returns an empty result `{}` your account does not have access to view the indicator types. 
+Please contact your ThreatQ administrator for these values if you are unable to access the above endpoint.
+
 ## Configuring Attributes
 
 The ThreatQ integration supports providing a list of Indicator Attributes you would like displayed in the Overlay Window.
-These attributes are configured in the `config/config.js` file under the `threatQAttributes` property.
+These attributes are configured in the `config/threatq.config.js` file under the `threatQAttributes` property.
 
 The `threatQAttributes` property is an array of attribute objects where each attribute object has the following required
 and optional properties:
@@ -37,6 +79,7 @@ and optional properties:
    }]
 }
 ```
+
 
 ## ThreatQuotient Integration Options
 
