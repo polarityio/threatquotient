@@ -6,6 +6,12 @@
   "dependencies": {
     "request": "^2.88",
     "async": "^2.6.2",
-    "ip-address": "^5.9.0"
-  }
+    "ip-address": "^5.9.0",
+    "snyk": "^1.189.0"
+  },
+  "scripts": {
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
+  },
+  "snyk": true
 }
