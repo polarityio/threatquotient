@@ -61,19 +61,19 @@ module.exports = {
    * }]
    */
   threatQAttributes: [
-    {
-      name: 'Investigation',
-      editable: false
-    },
-    {
-      name: 'Confidence',
-      editable: true
-    },
-    {
-      name: 'False Positive',
-      editable: true,
-      values: ['true', 'false']
-    }
+    // {
+    //   name: 'Investigation',
+    //   editable: false
+    // },
+    // {
+    //   name: 'Confidence',
+    //   editable: true
+    // },
+    // {
+    //   name: 'False Positive',
+    //   editable: true,
+    //   values: ['true', 'false']
+    // }
   ],
   /**
    * Each threatQ instance has different IDs for typical indicators.  The following configuration property is used
@@ -104,13 +104,13 @@ module.exports = {
    * }
    */
   threatQIndicatorTypes: {
-    ipv4: 11,
-    email: 3,
-    domain: 8,
-    md5: 12,
-    sha1: 16,
-    sha256: 17,
-    url: 21,
-    ipv4cidr: 1
+    // ipv4: 11,
+    // email: 3,
+    // domain: 8,
+    // md5: 12,
+    // sha1: 16,
+    // sha256: 17,
+    // url: 21,
+    // ipv4cidr: 1
   }
 };
