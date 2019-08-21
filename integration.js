@@ -20,6 +20,16 @@ const IGNORED_IPS = new Set(['127.0.0.1', '255.255.255.255', '0.0.0.0']);
 const MAX_ENTITIES_PER_LOOKUP = 10;
 
 function doLookup(entities, options, cb) {
+  if (
+    typeof threatQConfig.threatQIndicatorTypes !== 'undefined' &&
+    Object.keys(threatQConfig.threatQIndicatorTypes).length == 0
+  ) {
+    return cb({
+      detail: 'Missing ThreatQ indicator types in your ThreatQ config file',
+      toFix: `Please open the ThreatQ config file called 'threatq.config.js' which is found in this 
+        integration's config directory and provides values for the 'threatQIndicatorTypes' property`
+    });
+  }
   let lookupResults = [];
   let { entityGroups, entityLookup } = createEntityGroups(entities, options);
 
@@ -65,8 +75,7 @@ function createEntityGroups(entities, options) {
     if (
       entity.isPrivateIP ||
       IGNORED_IPS.has(entity.value) ||
-      (entity.isIPv6 && !new Address6(entity.value).isValid()) ||
-      entity.types.indexOf('custom.cidr') > 0
+      (entity.isIPv6 && !new Address6(entity.value).isValid())
     ) {
       return;
     } else {
@@ -196,6 +205,12 @@ function _getEntityType(entity) {
   if (entity.isIPv4) {
     return 'ipv4';
   }
+  if (entity.isIPv6) {
+    return 'ipv6';
+  }
+  if (entity.type === 'IPv4CIDR') {
+    return 'ipv4cidr';
+  }
   if (entity.isDomain) {
     return 'domain';
   }
@@ -234,6 +249,11 @@ function _createSearchQuery(entityObjects, options) {
         field: 'indicator_score',
         operator: 'greater than or equal to',
         value: options.minimumScore.value
+      },
+      {
+        field: 'indicator_score',
+        operator: 'less than or equal to',
+        value: options.maximumScore.value
       }
     ]);
   });
@@ -387,14 +407,37 @@ function onMessage(payload, options, cb) {
           cb(err, attribute);
         }
       );
-    // case 'UPDATE_SCORE':
-    //   updateScore(payload.data.indicatorId, payload.data.score, options, (err, indicator) => {
-    //     if (err) {
-    //       Logger.error(err, 'Error in updateScore');
-    //     }
-    //     cb(err, indicator);
-    //   });
-    //   break;
+      break;
+    case 'UPDATE_INDICATOR':
+      let fieldName = payload.data.fieldName;
+      if (fieldName === 'score') {
+        updateScore(payload.data.indicatorId, payload.data.fieldValue, options, (err, indicator) => {
+          if (err) {
+            Logger.error(err, 'Error in updateScore');
+          }
+          cb(err, indicator);
+        });
+      } else if (fieldName === 'status') {
+        updateStatus(payload.data.indicatorId, payload.data.fieldValue, options, (err, indicator) => {
+          if (err) {
+            Logger.error(err, 'Error in updateStatus');
+          }
+          cb(err, indicator);
+        });
+      } else {
+        cb({
+          detail: 'UPDATE_INDICATOR must update `score` or `status`'
+        });
+      }
+      break;
+    case 'UPDATE_SCORE':
+      updateScore(payload.data.indicatorId, payload.data.score, options, (err, indicator) => {
+        if (err) {
+          Logger.error(err, 'Error in updateScore');
+        }
+        cb(err, indicator);
+      });
+      break;
     case 'UPDATE_STATUS':
       updateStatus(payload.data.indicatorId, payload.data.statusId, options, (err, indicator) => {
         if (err) {
@@ -404,9 +447,7 @@ function onMessage(payload, options, cb) {
       });
       break;
     default:
-      cb({
-        detail: 'Unexpected onMessage type.  Supported messages are `CREATE_COMMENT` and `GET_COMMENTS`'
-      });
+      cb({ detail: 'Unexpected onMessage type.  Supported messages are `CREATE_COMMENT` and `GET_COMMENTS`' });
   }
 }
 
@@ -715,25 +756,25 @@ function getDetails(id, options, cb) {
 }
 
 function updateComment(indicatorCommentId, value, options, cb) {
-    let requestOptions = {
-        method: 'PUT',
-        uri: `${options.url}/api/indicators/comments/${indicatorCommentId}`,
-        body: {
-            value: value
-        },
-        json: true
-    };
+  let requestOptions = {
+    method: 'PUT',
+    uri: `${options.url}/api/indicators/comments/${indicatorCommentId}`,
+    body: {
+      value: value
+    },
+    json: true
+  };
 
-    Logger.trace(requestOptions);
+  Logger.trace(requestOptions);
 
-    authenticatedRequest(options, requestOptions, function(err, response, body) {
-        if (err) {
-            return cb(err);
-        }
+  authenticatedRequest(options, requestOptions, function(err, response, body) {
+    if (err) {
+      return cb(err);
+    }
 
-        // returns newly updated comment
-        cb(null, body.data);
-    });
+    // returns newly updated comment
+    cb(null, body.data);
+  });
 }
 
 function createComment(id, note, options, cb) {
@@ -840,9 +881,15 @@ function _createLookupResultObject(entityObj, result, options) {
     return;
   }
 
-  // store the lookup values on the entity object as the entity object is not cached by the server
-  // This means that if the admin changes the attributes, the cache does not have to be invalidated
-  entityObj._threatQAttributeLookup = attributeLookup;
+  result.userOptions = {
+    _threatQAttributeLookup: attributeLookup,
+    _threatQStatuses: threatQConfig.threatQStatuses,
+    url: options.url,
+    allowAddingTag: options.allowAddingTag,
+    allowDeletingTags: options.allowDeletingTags,
+    allowEditingStatus: options.allowEditingStatus,
+    allowEditingScore: options.allowEditingScore
+  };
 
   return {
     entity: entityObj,
@@ -920,7 +967,7 @@ function startup(logger) {
   }
 
   if (Array.isArray(threatQConfig.threatQAttributes)) {
-      threatQConfig.threatQAttributes.forEach((attribute) => {
+    threatQConfig.threatQAttributes.forEach((attribute) => {
       attributesConfigured = true;
       attributeLookup[attribute.name] = attribute;
     });
@@ -993,6 +1040,15 @@ function validateOptions(userOptions, cb) {
     errors.push({
       key: 'url',
       message: 'You must provide your TQ server URL'
+    });
+  }
+
+  Logger.info(userOptions);
+
+  if (+userOptions.minimumScore.value.value > +userOptions.maximumScore.value.value) {
+    errors.push({
+      key: 'minimumScore',
+      message: 'The Minimum Score must be less than or equal to the Maximum Score'
     });
   }
 

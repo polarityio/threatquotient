@@ -1,5 +1,5 @@
 <div class="view-in-threatq">
-    <a href="{{block.userOptions.url}}/indicators/{{details.id}}/details">View in ThreatQ {{fa-icon "external-link-square" class="external-link-icon"}}</a>
+    <a href="{{details.userOptions.url}}/indicators/{{details.id}}/details">View in ThreatQ {{fa-icon "external-link-square" class="external-link-icon"}}</a>
 </div>
 
 <ul class="nav nav-tabs">
@@ -10,6 +10,44 @@
         <a {{action "changeTab" "comments"}} class="nav-link {{if (eq activeTab "comments") "active"}}" href="#">Comments ({{details.totalComments}})</a>
     </li>
 </ul>
+
+{{#if showUpdateModal}}
+    <div class="update-modal">
+        <form>
+            <div class="form-group">
+                <label for="exampleInputEmail1">{{capitalize updateFieldName}}</label>
+                {{#if (eq updateFieldName "score")}}
+                    {{#power-select
+                            options=scores
+                            selected=tmpUpdateValue
+                            searchEnabled=false
+                            placeholder="Score"
+                            onchange=(action (mut tmpUpdateValue)) as |score|}}
+                        {{score.display}}
+                    {{/power-select}}
+                {{else}}
+                    {{#power-select
+                            options=details.userOptions._threatQStatuses
+                            selected=tmpUpdateValue
+                            searchEnabled=false
+                            placeholder="Status"
+                            onchange=(action (mut tmpUpdateValue)) as |status|}}
+                        {{status.display}}
+                    {{/power-select}}
+                {{/if}}
+            </div>
+            <button type="submit" disabled={{isUpdating}} {{action "updateValue" details.id updateFieldName tmpUpdateValue}} class="float-right btn btn-sm btn-secondary">
+            {{#if isUpdating}}
+                {{fa-icon "spinner-third" spin=true fixedWidth=true}}
+            {{else}}
+                {{fa-icon "save" fixedWidth=true}}
+            {{/if}}
+            Save
+            </button>
+            <button type="submit" disabled={{isUpdating}} {{action "showUpdateModal" false updateFieldName}} class="float-right mr-1 btn btn-sm btn-outline-secondary">Cancel</button>
+        </form>
+    </div>
+{{/if}}
 
 {{#unless block.isLoadingDetails}}
     {{#if (or (eq activeTab "details")(not activeTab))}}
@@ -33,6 +71,17 @@
                 </div>
             {{/if}}
 
+            {{#if details.status}}
+                <div>
+                    {{#if details.userOptions.allowEditingStatus}}
+                        <span class="p-key" {{action "showUpdateModal" true "status" details.status.id}}>Status {{fa-icon "edit" fixedWidth=true class="edit-icon"}}:</span>
+                    {{else}}
+                        <span class="p-key">Status: </span>
+                    {{/if}}
+                    <span class="p-value">{{details.status.name}}</span>
+                </div>
+            {{/if}}
+
             {{#if details.class}}
                 <div>
                     <span class="p-key">Class: </span>
@@ -42,7 +91,11 @@
 
             {{#if details.score}}
                 <div>
-                    <span class="p-key">Score:</span>
+                    {{#if details.userOptions.allowEditingScore}}
+                        <span class="p-key" {{action "showUpdateModal" true "score" details.score}}>Score {{fa-icon "edit" fixedWidth=true class="edit-icon"}}:</span>
+                    {{else}}
+                        <span class="p-key" >Score:</span>
+                    {{/if}}
                     <span class="p-value">{{details.score}}</span>
                 </div>
             {{/if}}
@@ -86,6 +139,7 @@
                 </div>
             {{/if}}
 
+            {{#if hasAttributes}}
             <div class="d-flex align-items-center justify-content-between">
                 <span class="d-flex align-items-center">
                     <span class="p-title">
@@ -99,13 +153,16 @@
                     <span class="p-footnote mt-1">{{fa-icon "spinner-third" spin=true}} {{loadingAttributesMessage}}</span>
                 {{/if}}
             </div>
+            {{else}}
+                <span class="p-footnote">No Attributes configured.  Attributes must be configured by a Polarty Admin for this integration.</span>
+            {{/if}}
             {{#if showAddAttribute}}
                 <div class="add-attribute-container">
                     <div class="mt-1">
                         <span class="p-key">Attribute Type</span>
                         <select class="mt-1 attribute-select" onchange={{action (mut selectedAddAttributeName) value="target.value"}}>
                             <option value="" disabled selected>Select Attribute to Add ... </option>
-                            {{#each-in block.entity._threatQAttributeLookup as |attributeName attribute|}}
+                            {{#each-in details.userOptions._threatQAttributeLookup as |attributeName attribute|}}
                                 <option value="{{attributeName}}">{{attributeName}}</option>
                             {{/each-in}}
                         </select>
@@ -113,10 +170,10 @@
                     <div class="mt-2">
                         {{#if selectedAddAttributeName}}
                             <span class="p-key">Attribute Value</span>
-                            {{#if (get (get block.entity._threatQAttributeLookup selectedAddAttributeName) "values")}}
+                            {{#if (get (get details.userOptions._threatQAttributeLookup selectedAddAttributeName) "values")}}
                                 <select class="mt-1 attribute-select" onchange={{action (mut selectedAddAttributeValue) value="target.value"}}>
                                     <option value="" disabled selected>Select Attribute Value ...</option>
-                                    {{#each (get (get block.entity._threatQAttributeLookup selectedAddAttributeName) "values") as |value|}}
+                                    {{#each (get (get details.userOptions._threatQAttributeLookup selectedAddAttributeName) "values") as |value|}}
                                         <option value="{{value}}">{{value}}</option>
                                     {{/each}}
                                 </select>
@@ -170,9 +227,9 @@
                                     <div class="arrow-up"></div>
                                     <div class="edit-attribute-container">
                                         <div class="input-container">
-                                        {{#if (get (get block.entity._threatQAttributeLookup attribute.name) "values")}}
+                                        {{#if (get (get details.userOptions._threatQAttributeLookup attribute.name) "values")}}
                                             <select class="attribute-select" onchange={{action (mut attribute._shadowValue) value="target.value"}}>
-                                                {{#each (get (get block.entity._threatQAttributeLookup attribute.name) "values") as |value|}}
+                                                {{#each (get (get details.userOptions._threatQAttributeLookup attribute.name) "values") as |value|}}
                                                     <option value="{{value}}" selected={{eq value attribute.value}}>{{value}}</option>
                                                 {{/each}}
                                             </select>
@@ -207,7 +264,7 @@
                                 <td>{{attribute.name}}</td>
                                 <td>{{attribute.value}}</td>
                                 <td>
-                                    {{#if (get (get block.entity._threatQAttributeLookup attribute.name) "editable")}}
+                                    {{#if (get (get details.userOptions._threatQAttributeLookup attribute.name) "editable")}}
                                         <span {{action "editAttribute" attributeIndex attribute.value}}>
                                             {{fa-icon "pencil" fixedWidth=true class="edit-icon"}}
                                         </span>
@@ -228,7 +285,7 @@
                 {{#each details.tags as | tag |}}
                     <span class="tq-tag">
                         {{tag.name}}
-                        {{#if block.userOptions.allowDeletingTags}}
+                        {{#if details.userOptions.allowDeletingTags}}
                             <span {{action "deleteTag" tag.id}}>
                                 {{fa-icon "times" class="tag-close-icon" fixedWidth=true}}
                             </span>
@@ -237,7 +294,7 @@
                 {{/each}}
             {{/if}}
 
-            {{#if block.userOptions.allowAddingTag}}
+            {{#if details.userOptions.allowAddingTag}}
                 <div class="input-group input-group-sm">
                     {{input type="text" placeholder="Add Tag" enter=(action "addTag") class="form-control add-tag-input" value=newTagName}}
                     <div class="input-group-append">
@@ -259,7 +316,7 @@
             </div>
             {{#if (gt details.adversaries.length 0)}}
                 {{#each details.adversaries as |adversary|}}
-                 <a href="{{block.userOptions.url}}/adversaries/{{adversary.id}}/details">{{adversary.name}}</a>
+                 <a href="{{details.userOptions.url}}/adversaries/{{adversary.id}}/details">{{adversary.name}}</a>
                 {{/each}}
             {{/if}}
         </div>

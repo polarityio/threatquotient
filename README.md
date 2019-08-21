@@ -47,8 +47,8 @@ to the following URL:
 https://<your-threatq-server>/api/indicator/types
 ```
 
-> Note that if this endpoint returns an empty result `{}` your account does not have access to view the indicator types. 
-Please contact your ThreatQ administrator for these values if you are unable to access the above endpoint.
+> If this endpoint returns an empty result `{}` your account does not have access to view the indicator types and
+you will need to rerun the query while logged in as a ThreatQuotient admin. 
 
 ## Configuring Attributes
 
@@ -80,6 +80,32 @@ and optional properties:
 }
 ```
 
+## Configuring Custom Statuses
+
+This integration comes pre-configured with the default ThreatQ Indicator Statuses
+
+* Active
+* Expired
+* Indirect
+* Review
+* Whitelisted
+
+You can add additional custom statuses, or remove default statuses by modifying the `threatQStatuses` property in 
+the `config/threatq.config.js` configuration file.  The `threatQStatuses` property is an array of status objects
+where each status object contains the following properties:
+
+* `value` {String} The id for the status as a string (e.g., '1').  The id value is set by the ThreatQ server.
+* `display` {String} The display value for the status (e.g., 'Active')
+* `default` {Boolean} A true or false value indicating whether the status value should be set as a default search option
+
+To view a list of all valid statuses in your ThreatQ deployment you can query the following endpoint with a GET request
+
+```
+https://<your-threatq-server>/api/indicator/statuses
+```
+
+> If this endpoint returns an empty result `{}` your account does not have access to view the indicator types and
+you will need to rerun the query while logged in as a ThreatQuotient admin. 
 
 ## ThreatQuotient Integration Options
 
@@ -107,13 +133,31 @@ If checked, users will be able to add new tags from the overlay window
 
 If checked, users will be able to delete tags from the overlay window
 
+### Enable Editing of Indicator Status
+
+If checked, users will be able to edit the "status" of an indicator (e.g., Active, WhiteListed, Review etc.)
+
+### Enable Manual Editing of Indicator Score
+
+If checked, users will be able to edit the "score" of an indicator. 
+ 
+>  !!! Note that manually setting the score of an indicator is not a recommended best practice. Setting the score manually prevents ThreatQuotient from setting an automatic indicator score.
+
 ### Minimum Score
 
 The minimum indicator score required for indicators to be returned by the integration
 
+### Maximum Score
+
+The maximum indicator score required for indicators to be returned by the integration
+
+As an example, if the minimum indicator score is set to 4 and the maximum indicator score is set to 8, the integration
+will only return indicators that have a score between 4 and 8 inclusive (i.e., including score values 4 and 8)
+
 ### Indicator Statuses
 
-Select 1 or more indicator status types to return. The integration will only search and return indicators with the specified statuses
+Select 1 or more indicator status types to return. The integration will only search and return indicators with the specified statuses.
+Indicator status options are taken from your `config/threatq.config.js` file.  For more information see the section on configuring custom statuses.
 
 ## Installation Instructions
 
