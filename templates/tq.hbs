@@ -426,6 +426,9 @@
                 </div>
         </div>
     {{/if}}
+    {{#if errorMessage}}
+        <div class="error-box">{{fa-icon "exclamation-triangle" fixedWidth=true}}  {{errorMessage}}</div>
+    {{/if}}
 {{/unless}}
 
 
