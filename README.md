@@ -15,6 +15,11 @@ Polarity's ThreatQuotient integration gives users access to automated MD5, SHA1,
 * Enable updating Indicator Status and Score
 * View/Add/Edit Comments
 
+** Upgrading
+
+When upgrading this integration don't forget to make a copy of your `config/threatq.config.js` file so you can copy
+any settings over to the upgraded integration.
+
 ## Configuring Indicator Types
 
 The ThreatQ integration requires that you provide a mapping of indicator types to their respective indicator IDs in your
