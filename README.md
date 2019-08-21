@@ -8,6 +8,12 @@ Polarity's ThreatQuotient integration gives users access to automated MD5, SHA1,
 |---|---|
 |*ThreatQ Indicator Tab* | *ThreatQ Comments Tab* |
 
+## Feature Summary
+
+* View Indicator details including type, status, class, sources, attributes, tags, description, related adversaries, and comments
+* Enable adding and removing tags
+* Enable updating Indicator Status and Score
+* View/Add/Edit Comments
 
 ## Configuring Indicator Types
 
