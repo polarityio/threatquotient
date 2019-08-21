@@ -1,3 +1,5 @@
+const threatQConfig = require('./threatq.config');
+
 module.exports = {
   /**
    * Name of the integration which is displayed in the Polarity integrations user interface
@@ -23,7 +25,7 @@ module.exports = {
    * @optional
    */
   description: "Threat Quotient integration for IP's, hashes, domains, and email",
-  entityTypes: ['IPv4', 'IPv6', 'hash', 'domain', 'email'],
+  entityTypes: ['IPv4', 'IPv4CIDR', 'IPv6', 'hash', 'domain', 'email'],
   /**
    * An array of style files (css or less) that will be included for your integration. Any styles specified in
    * the below files can be used in your custom template.
@@ -139,6 +141,26 @@ module.exports = {
       adminOnly: true
     },
     {
+      key: 'allowEditingStatus',
+      name: 'Enable Editing of Indicator Status',
+      description:
+        'If checked, users will be able to edit the "status" of an indicator (e.g., Active, WhiteListed, Review etc.)',
+      default: false,
+      type: 'boolean',
+      userCanEdit: false,
+      adminOnly: true
+    },
+    {
+      key: 'allowEditingScore',
+      name: 'Enable Manual Editing of Indicator Score',
+      description:
+        'If checked, users will be able to edit the "score" of an indicator.  Note that manually setting the score of an indicator is not a recommended best practice.  Setting the score manually prevents ThreatQuotient from setting an automatic indicator score.',
+      default: false,
+      type: 'boolean',
+      userCanEdit: false,
+      adminOnly: true
+    },
+    {
       key: 'minimumScore',
       name: 'Minimum Score',
       description: 'The minimum indicator score required for indicators to be returned by the integration',
@@ -197,48 +219,85 @@ module.exports = {
       userCanEdit: true,
       adminOnly: false
     },
-      /**
-       * Please note that the below indicator statuses are the default ThreatQ statuses.  You may need to modify these
-       * values for your particular installation.
-       */
+    {
+      key: 'maximumScore',
+      name: 'Maximum Score',
+      description: 'The maximum indicator score required for indicators to be returned by the integration',
+      default: {
+        value: '10',
+        display: '10 - Very High'
+      },
+      type: 'select',
+      options: [
+        {
+          value: '10',
+          display: '10 - Very High'
+        },
+        {
+          value: '9',
+          display: '9 - High'
+        },
+        {
+          value: '8',
+          display: '8 - Medium'
+        },
+        {
+          value: '7',
+          display: '7 - Medium'
+        },
+        {
+          value: '6',
+          display: '6 - Low'
+        },
+        {
+          value: '5',
+          display: '5 - Low'
+        },
+        {
+          value: '4',
+          display: '4 - Very Low'
+        },
+        {
+          value: '3',
+          display: '3 - Very Low'
+        },
+        {
+          value: '2',
+          display: '2 - Very Low'
+        },
+        {
+          value: '1',
+          display: '1 - Very Low'
+        },
+        {
+          value: '0',
+          display: '0 - Very Low/Generated Score'
+        }
+      ],
+      multiple: false,
+      userCanEdit: true,
+      adminOnly: false
+    },
+    /**
+     * Please note that the below indicator statuses are the default ThreatQ statuses.  You may need to modify these
+     * values for your particular installation.
+     */
     {
       key: 'indicatorStatuses',
       name: 'Indicator Statuses',
       description:
         'Select 1 or more indicator status types to return.  The integration will only search and return indicators with the specified statuses',
-      default: [
-        {
-          value: '1',
-          display: 'Active'
-        },
-        {
-          value: '4',
-          display: 'Review'
+      default: threatQConfig.threatQStatuses.reduce((acc, threatQ) => {
+        if (threatQ.default) {
+          acc.push({ value: threatQ.value, display: threatQ.display });
         }
-      ],
+        return acc;
+      }, []),
       type: 'select',
-      options: [
-        {
-          value: '1',
-          display: 'Active'
-        },
-        {
-          value: '2',
-          display: 'Expired'
-        },
-        {
-          value: '3',
-          display: 'Indirect'
-        },
-        {
-          value: '4',
-          display: 'Review'
-        },
-        {
-          value: '5',
-          display: 'Whitelisted'
-        }
-      ],
+      options: threatQConfig.threatQStatuses.reduce((acc, threatQ) => {
+        acc.push({ value: threatQ.value, display: threatQ.display });
+        return acc;
+      }, []),
       multiple: true,
       userCanEdit: true,
       adminOnly: false

@@ -5,6 +5,7 @@ polarity.export = PolarityComponent.extend({
   timezone: Ember.computed('Intl', function() {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   }),
+
   createCommentError: '',
   loadingComments: false,
   loadingAttributes: false,
@@ -14,6 +15,8 @@ polarity.export = PolarityComponent.extend({
   newComment: '',
   createButtonDisabled: false,
   showAddComment: false,
+  // Set to true when a value is being updated
+  isUpdating: false,
   showAddAttribute: false,
   showAddTag: false,
   selectedAddAttributeName: '',
@@ -21,7 +24,65 @@ polarity.export = PolarityComponent.extend({
   addTagError: '',
   newTagName: '',
   loadingCommentsMessage: '',
+  scores: [
+    {
+      value: '10',
+      display: '10 - Very High'
+    },
+    {
+      value: '9',
+      display: '9 - High'
+    },
+    {
+      value: '8',
+      display: '8 - Medium'
+    },
+    {
+      value: '7',
+      display: '7 - Medium'
+    },
+    {
+      value: '6',
+      display: '6 - Low'
+    },
+    {
+      value: '5',
+      display: '5 - Low'
+    },
+    {
+      value: '4',
+      display: '4 - Very Low'
+    },
+    {
+      value: '3',
+      display: '3 - Very Low'
+    },
+    {
+      value: '2',
+      display: '2 - Very Low'
+    },
+    {
+      value: '1',
+      display: '1 - Very Low'
+    },
+    {
+      value: '0',
+      display: '0 - Very Low/Generated Score'
+    }
+  ],
+  hasAttributes: Ember.computed('details.userOptions._threatQAttributeLookup', function() {
+    return Object.keys(this.get('details.userOptions._threatQAttributeLookup')).length > 0;
+  }),
   actions: {
+    showUpdateModal: function(show, fieldName, fieldValue) {
+      if (fieldName === 'score') {
+        this.set('tmpUpdateValue', this.scores.find((score) => score.value === fieldValue));
+      } else {
+        this.set('tmpUpdateValue', this.block.data.details.userOptions._threatQStatuses.find((status) => +status.value === +fieldValue));
+      }
+      this.set('showUpdateModal', show);
+      this.set('updateFieldName', fieldName);
+    },
     hideDeleteCommentConfirmation(commentIndex) {
       this.set('details.comments.' + commentIndex + '.__showDeleteConfirmation', false);
     },
@@ -42,6 +103,45 @@ polarity.export = PolarityComponent.extend({
     },
     changeTab: function(tabName) {
       this.set('activeTab', tabName);
+    },
+    updateValue: function(indicatorId, fieldName, fieldValue) {
+      let self = this;
+
+      console.info(`Updating ${fieldName} with new value ${fieldValue}`);
+
+      this.set('isUpdating', true);
+      // The payload can contain any properties as long as you send a javascript object literal (POJO)
+      let payload = {
+        type: 'UPDATE_INDICATOR',
+        data: {
+          indicatorId: indicatorId,
+          fieldName: fieldName,
+          fieldValue: fieldValue.value
+        }
+      };
+
+      // This is a utility method that will send the payload to the server where it will trigger the integration's `onMessage` method
+      this.sendIntegrationMessage(payload)
+        .then(function(observable) {
+          console.info(observable);
+          if (fieldName === 'score') {
+            self.set('block.data.details.' + fieldName, fieldValue.value);
+            self.set('block.data.summary.0', `Score: ${fieldValue.value}`);
+          } else {
+            self.set('block.data.details.status.id', fieldValue.value);
+            self.set('block.data.details.status.name', fieldValue.display);
+            self.set('block.data.summary.1', `Status: ${fieldValue.display}`);
+          }
+
+          self.get('block').notifyPropertyChange('data');
+        })
+        .catch((err) => {
+          self._displayError(err);
+        })
+        .finally(() => {
+          self.set('showUpdateModal', false);
+          self.set('isUpdating', false);
+        });
     },
     updateWatchlist: function() {
       let watchlist = this.get('details.watchlist');
@@ -368,5 +468,14 @@ polarity.export = PolarityComponent.extend({
       type: 'unv-success',
       timeout: 3000
     });
+  },
+  _displayError(err) {
+    if (err.stack && err.message) {
+      // If there is an error we convert the error into a string and append it to the string ERROR!
+      this.set('errorMessage', 'ERROR! ' + err.stack);
+    } else {
+      // If there is an error we convert the error into a string and append it to the string ERROR!
+      this.set('errorMessage', 'ERROR! ' + JSON.stringify(err));
+    }
   }
 });
