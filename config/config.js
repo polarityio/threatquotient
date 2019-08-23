@@ -224,11 +224,15 @@ module.exports = {
       name: 'Maximum Score',
       description: 'The maximum indicator score required for indicators to be returned by the integration',
       default: {
-        value: '10',
-        display: '10 - Very High'
+        value: '9999',
+        display: 'No Maximum'
       },
       type: 'select',
       options: [
+        {
+          value: '9999',
+          display: 'No Maximum'
+        },
         {
           value: '10',
           display: '10 - Very High'
