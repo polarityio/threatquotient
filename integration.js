@@ -234,7 +234,7 @@ function _createSearchQuery(entityObjects, options) {
   let indicators = [];
 
   entityObjects.forEach((entityObj) => {
-    indicators.push([
+    let indicatorQuery = [
       {
         field: 'indicator_value',
         operator: 'is',
@@ -249,13 +249,21 @@ function _createSearchQuery(entityObjects, options) {
         field: 'indicator_score',
         operator: 'greater than or equal to',
         value: options.minimumScore.value
-      },
-      {
+      }
+    ];
+
+    // Note that indicators in ThreatQ can have a score higher than 10 even though the user interface
+    // shows 10 as the maximum.  We only want to apply the max score filter if the max score has been
+    // set to 9 or less by the user.
+    if (options.maximumScore.value !== 9999) {
+      indicatorQuery.push({
         field: 'indicator_score',
         operator: 'less than or equal to',
         value: options.maximumScore.value
-      }
-    ]);
+      });
+    }
+
+    indicators.push(indicatorQuery);
   });
 
   return indicators;
