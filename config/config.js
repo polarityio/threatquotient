@@ -171,7 +171,7 @@ module.exports = {
       type: 'select',
       options: [
         {
-          value: '10',
+          value: '100', // the max score in the ThreatQ interface is 10 but the actual max is 100 which is hidden by the server
           display: '10 - Very High'
         },
         {
@@ -224,17 +224,13 @@ module.exports = {
       name: 'Maximum Score',
       description: 'The maximum indicator score required for indicators to be returned by the integration',
       default: {
-        value: '9999',
-        display: 'No Maximum'
+        value: '100',
+        display: '10 - Very High'
       },
       type: 'select',
       options: [
         {
-          value: '9999',
-          display: 'No Maximum'
-        },
-        {
-          value: '10',
+          value: '100', // the max score in the ThreatQ interface is 10 but the actual max is 100 which is hidden by the server
           display: '10 - Very High'
         },
         {
