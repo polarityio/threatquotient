@@ -249,19 +249,13 @@ function _createSearchQuery(entityObjects, options) {
         field: 'indicator_score',
         operator: 'greater than or equal to',
         value: options.minimumScore.value
-      }
-    ];
-
-    // Note that indicators in ThreatQ can have a score higher than 10 even though the user interface
-    // shows 10 as the maximum.  We only want to apply the max score filter if the max score has been
-    // set to 9 or less by the user.
-    if (options.maximumScore.value !== 9999) {
-      indicatorQuery.push({
+      },
+      {
         field: 'indicator_score',
         operator: 'less than or equal to',
         value: options.maximumScore.value
-      });
-    }
+      }
+    ];
 
     indicators.push(indicatorQuery);
   });
@@ -1006,7 +1000,7 @@ function startup(logger) {
 
       requestWithDefaults(requestOptions, (err, resp, body) => {
         if (err) {
-          return _createJsonErrorPayload(
+          return cb(_createJsonErrorPayload(
             'Unable to connect to TQ server',
             null,
             '500',
@@ -1014,16 +1008,15 @@ function startup(logger) {
             'ThreatQ HTTP Request Failed',
             {
               err: err,
-              response: response,
+              response: resp,
               body: body
             }
-          );
+          ));
         }
 
         if (resp.statusCode === 401) {
           // Unable to authenticate so we attempt to get a new token
           sessionManager.clearSession(options.username, options.password);
-
           authenticatedRequest(options, requestOptions, cb, ++requestCounter);
           return;
         }
