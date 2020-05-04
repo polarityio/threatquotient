@@ -742,7 +742,7 @@ function getDetails(id, options, cb) {
     method: 'GET',
     uri: `${options.url}/api/indicators/${id}`,
     qs: {
-      with: 'tags,adversaries,attributes,watchlist'
+      with: 'tags,adversaries,attributes'
     },
     json: true
   };
@@ -848,7 +848,6 @@ function onDetails(lookupObject, options, cb) {
       }
 
       lookupObject.data.details.currentUserSourceId = results.currentUser;
-      lookupObject.data.details.watchlist = results.details.watchlist;
       lookupObject.data.details.adversaries = results.details.adversaries;
       lookupObject.data.details.attributes = _pickConfiguredAttributes(results.details.attributes);
       lookupObject.data.details.tags = results.details.tags;
