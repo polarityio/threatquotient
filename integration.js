@@ -742,7 +742,7 @@ function getDetails(id, options, cb) {
     method: 'GET',
     uri: `${options.url}/api/indicators/${id}`,
     qs: {
-      with: 'tags,adversaries,attributes,indicators,watchlist'
+      with: 'tags,adversaries,attributes,watchlist'
     },
     json: true
   };
@@ -843,6 +843,7 @@ function onDetails(lookupObject, options, cb) {
     },
     (err, results) => {
       if (err) {
+        Logger.error({err}, 'Err making onDetail calls');
         return cb(err);
       }
 
@@ -851,7 +852,6 @@ function onDetails(lookupObject, options, cb) {
       lookupObject.data.details.adversaries = results.details.adversaries;
       lookupObject.data.details.attributes = _pickConfiguredAttributes(results.details.attributes);
       lookupObject.data.details.tags = results.details.tags;
-      lookupObject.data.details.indicators = results.details.indicators;
       lookupObject.data.details.description = results.details.description;
       lookupObject.data.details.comments = results.comments.comments;
       lookupObject.data.details.totalComments = results.comments.totalComments;
