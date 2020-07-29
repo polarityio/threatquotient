@@ -1077,8 +1077,8 @@ function validateOptions(userOptions, cb) {
     (typeof userOptions.client.value === 'string' && userOptions.client.value.length === 0)
   ) {
     errors.push({
-      key: 'username',
-      message: 'You must provide your TQ username'
+      key: 'client',
+      message: 'You must provide your ThreatQ Client ID'
     });
   }
   cb(null, errors);
