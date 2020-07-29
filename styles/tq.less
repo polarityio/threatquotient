@@ -6,9 +6,13 @@
 }
 
 .edit-icon {
-  color: #aaa;
   font-size: 8px;
   margin-bottom: 1px;
+}
+
+.btn{
+  height: auto;
+  font-weight: 400;
 }
 
 .update-modal {
@@ -164,12 +168,12 @@ div.tab-container {
   }
 }
 
-.edit-icon {
+.editable-attribute {
   color: #9a9a9a;
   cursor: pointer;
 }
 
-.edit-icon:hover {
+.editable-attribute:hover {
   color: #7bc942;
 }
 
@@ -197,11 +201,18 @@ div.tab-container {
       cursor: pointer;
       float: right;
       margin-right: 5px;
+      font-size: 10px;
     }
 
-    .edit-icon {
+    .edit-comment-icon {
+      color: #9a9a9a;
       float: right;
       margin-right: 5px;
+      font-size: 10px;
+    }
+
+    .edit-comment-icon:hover{
+      color: darken(#9a9a9a, 10%);
     }
 
     .delete-comment-icon:hover {
