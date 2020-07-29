@@ -94,7 +94,7 @@
             {{#if details.score}}
                 <div>
                     {{#if details.userOptions.allowEditingScore}}
-                        <span class="p-key editable-icon" {{action "showUpdateModal" true "score" details.score}}>Score {{fa-icon "edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
+                        <span class="p-key editable-attribute" {{action "showUpdateModal" true "score" details.score}}>Score {{fa-icon "edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
                     {{else}}
                         <span class="p-key" >Score:</span>
                     {{/if}}
