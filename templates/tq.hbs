@@ -21,8 +21,9 @@
                             options=scores
                             selected=tmpUpdateValue
                             searchEnabled=false
+                            searchField="display"
                             placeholder="Score"
-                            onchange=(action (mut tmpUpdateValue)) as |score|}}
+                            onChange=(action (mut tmpUpdateValue)) as |score|}}
                         {{score.display}}
                     {{/power-select}}
                 {{else}}
@@ -30,8 +31,9 @@
                             options=details.userOptions._threatQStatuses
                             selected=tmpUpdateValue
                             searchEnabled=false
+                            searchField="display"
                             placeholder="Status"
-                            onchange=(action (mut tmpUpdateValue)) as |status|}}
+                            onChange=(action (mut tmpUpdateValue)) as |status|}}
                         {{status.display}}
                     {{/power-select}}
                 {{/if}}
@@ -74,7 +76,7 @@
             {{#if details.status}}
                 <div>
                     {{#if details.userOptions.allowEditingStatus}}
-                        <span class="p-key" {{action "showUpdateModal" true "status" details.status.id}}>Status {{fa-icon "edit" fixedWidth=true class="edit-icon"}}:</span>
+                        <span class="p-key editable-attribute" {{action "showUpdateModal" true "status" details.status.id}}>Status {{fa-icon "edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
                     {{else}}
                         <span class="p-key">Status: </span>
                     {{/if}}
@@ -92,7 +94,7 @@
             {{#if details.score}}
                 <div>
                     {{#if details.userOptions.allowEditingScore}}
-                        <span class="p-key" {{action "showUpdateModal" true "score" details.score}}>Score {{fa-icon "edit" fixedWidth=true class="edit-icon"}}:</span>
+                        <span class="p-key editable-attribute" {{action "showUpdateModal" true "score" details.score}}>Score {{fa-icon "edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
                     {{else}}
                         <span class="p-key" >Score:</span>
                     {{/if}}
@@ -303,13 +305,14 @@
                 </div>
             {{/if}}
             <div>
-                <span class="p-title">{{fa-icon "fingerprint" fixedWidth=true}} Description</span>
+                <span class="p-title">{{fa-icon "file-alt" fixedWidth=true}} Description {{#unless details.description}}(None){{/unless}}</span>
             </div>
             {{#if details.description}}
-                <div class="description-container">
-                    {{{details.description}}}
-                </div>
+              <div class="description-container">
+                {{{details.description}}}
+              </div>
             {{/if}}
+
 
             <div>
                 <span class="p-title">{{fa-icon "fire" fixedWidth=true}} Related Adversaries ({{details.adversaries.length}})</span>
@@ -377,7 +380,7 @@
                                     {{fa-icon "trash-alt" fixedWidth class="delete-comment-icon"}}
                                 </span>
                                 <span {{action "showEditCommentModal" commentIndex}}>
-                                    {{fa-icon "pencil" fixedWidth class="edit-icon"}}
+                                    {{fa-icon "pencil" fixedWidth class="edit-comment-icon"}}
                                 </span>
                             {{/if}}
                         </div>
