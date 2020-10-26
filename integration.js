@@ -250,7 +250,7 @@ function _createSearchQuery(entityObjects, options) {
                 {
                   '+or': [
                     {
-                      mentions: entityObj.value
+                      value: entityObj.value
                     }
                   ]
                 }
