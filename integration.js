@@ -20,16 +20,6 @@ const IGNORED_IPS = new Set(['127.0.0.1', '255.255.255.255', '0.0.0.0']);
 const MAX_ENTITIES_PER_LOOKUP = 10;
 
 function doLookup(entities, options, cb) {
-  if (
-    typeof threatQConfig.threatQIndicatorTypes !== 'undefined' &&
-    Object.keys(threatQConfig.threatQIndicatorTypes).length == 0
-  ) {
-    return cb({
-      detail: 'Missing ThreatQ indicator types in your ThreatQ config file',
-      toFix: `Please open the ThreatQ config file called 'threatq.config.js' which is found in this 
-        integration's config directory and provides values for the 'threatQIndicatorTypes' property`
-    });
-  }
   let lookupResults = [];
   let { entityGroups, entityLookup } = createEntityGroups(entities, options);
 
@@ -66,7 +56,7 @@ function createEntityGroups(entities, options) {
 
   Logger.debug({ entities: entities, options: options }, 'Entities and Options');
 
-  entities.forEach(function(entity) {
+  entities.forEach(function (entity) {
     if (entityGroup.length >= MAX_ENTITIES_PER_LOOKUP) {
       entityGroups.push(entityGroup);
       entityGroup = [];
@@ -129,7 +119,7 @@ function createToken(options, done) {
     json: true
   };
 
-  requestWithDefaults(requestOptions, function(err, response, body) {
+  requestWithDefaults(requestOptions, function (err, response, body) {
     if (err) {
       // generic HTTP error
       done(
@@ -203,60 +193,73 @@ function createToken(options, done) {
 
 function _getEntityType(entity) {
   if (entity.isIPv4) {
-    return 'ipv4';
+    return 'IP Address';
   }
   if (entity.isIPv6) {
-    return 'ipv6';
+    return 'IPv6 Address';
   }
   if (entity.type === 'IPv4CIDR') {
-    return 'ipv4cidr';
+    return 'CIDR Block';
   }
   if (entity.isDomain) {
-    return 'domain';
+    return 'FQDN';
   }
   if (entity.isURL) {
-    return 'url';
+    return 'URL';
   }
   if (entity.isSHA1) {
-    return 'sha1';
+    return 'SHA1';
   }
   if (entity.isSHA256) {
-    return 'sha256';
+    return 'SHA256';
   }
   if (entity.isMD5) {
-    return 'md5';
+    return 'MD5';
   }
   if (entity.isEmail) {
-    return 'email';
+    return 'Email Address';
   }
 }
 function _createSearchQuery(entityObjects, options) {
   let indicators = [];
 
   entityObjects.forEach((entityObj) => {
-    let indicatorQuery = [
-      {
-        field: 'indicator_value',
-        operator: 'is',
-        value: entityObj.value
-      },
-      {
-        field: 'indicator_type',
-        operator: 'is',
-        value: threatQConfig.threatQIndicatorTypes[_getEntityType(entityObj)]
-      },
-      {
-        field: 'indicator_score',
-        operator: 'greater than or equal to',
-        value: options.minimumScore.value
-      },
-      {
-        field: 'indicator_score',
-        operator: 'less than or equal to',
-        value: options.maximumScore.value
-      }
-    ];
-
+    let indicatorQuery = {
+      '+or': [
+        {
+          '+and': [
+            {
+              '+or': [
+                {
+                  type_name: _getEntityType(entityObj)
+                }
+              ]
+            },
+            {
+              '+or': [
+                {
+                  score: {
+                    '+gte': options.minimumScore.value,
+                    '+lte': options.maximumScore.value
+                  }
+                }
+              ]
+            },
+            {
+              '+and': [
+                {
+                  '+or': [
+                    {
+                      mentions: entityObj.value
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
     indicators.push(indicatorQuery);
   });
 
@@ -268,19 +271,24 @@ function _lookupEntityGroup(entitiesArray, entityLookup, options, cb) {
   //do the lookup
   let requestOptions = {
     method: 'POST',
-    uri: options.url + '/api/search/advanced',
+    uri: options.url + '/api/indicators/query',
     qs: {
-      limit: 10
+      limit: 10,
+      offset: 0,
+      sort: '-created'
     },
     body: {
-      indicators: _createSearchQuery(entitiesArray, options)
+      criteria: {},
+      filters: {
+        '+or': _createSearchQuery(entitiesArray, options)
+      }
     },
     json: true
   };
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -465,7 +473,7 @@ function updateIndicatorAttribute(indicatorId, indicatorAttributeId, value, opti
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -487,7 +495,7 @@ function updateScore(indicatorId, score, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -506,7 +514,7 @@ function deleteAttribute(indicatorId, indicatorAttributeId, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -532,7 +540,7 @@ function addAttribute(indicatorId, attributeName, attributeValue, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -567,7 +575,7 @@ function updateStatus(indicatorId, statusId, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -586,7 +594,7 @@ function addToWatchlist(indicatorId, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, result) {
+  authenticatedRequest(options, requestOptions, function (err, result) {
     if (err) {
       return cb(err);
     }
@@ -604,7 +612,7 @@ function removeFromWatchlist(indicatorId, watchlistId, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err) {
+  authenticatedRequest(options, requestOptions, function (err) {
     if (err) {
       return cb(err);
     }
@@ -623,7 +631,7 @@ function deleteTag(indicatorId, tagId, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err) {
+  authenticatedRequest(options, requestOptions, function (err) {
     if (err) {
       return cb(err);
     }
@@ -644,7 +652,7 @@ function addTag(indicatorId, tagName, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -675,7 +683,7 @@ function deleteComment(indicatorId, commentId, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err) {
+  authenticatedRequest(options, requestOptions, function (err) {
     if (err) {
       Logger.error(err, 'Error deleting comment');
       return cb(err);
@@ -700,7 +708,7 @@ function getComments(id, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -723,7 +731,7 @@ function getAttributes(id, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -749,7 +757,7 @@ function getDetails(id, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -769,7 +777,7 @@ function updateComment(indicatorCommentId, value, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -792,7 +800,7 @@ function createComment(id, note, options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -811,7 +819,7 @@ function getCurrentUser(options, cb) {
 
   Logger.trace(requestOptions);
 
-  authenticatedRequest(options, requestOptions, function(err, response, body) {
+  authenticatedRequest(options, requestOptions, function (err, response, body) {
     if (err) {
       return cb(err);
     }
@@ -831,19 +839,19 @@ function getCurrentUser(options, cb) {
 function onDetails(lookupObject, options, cb) {
   async.parallel(
     {
-      details: function(done) {
+      details: function (done) {
         getDetails(lookupObject.data.details.id, options, done);
       },
-      comments: function(done) {
+      comments: function (done) {
         getComments(lookupObject.data.details.id, options, done);
       },
-      currentUser: function(done) {
+      currentUser: function (done) {
         getCurrentUser(options, done);
       }
     },
     (err, results) => {
       if (err) {
-        Logger.error({err}, 'Err making onDetail calls');
+        Logger.error({ err }, 'Err making onDetail calls');
         return cb(err);
       }
 
@@ -986,7 +994,7 @@ function startup(logger) {
       });
     }
 
-    createToken(options, function(err, token) {
+    createToken(options, function (err, token) {
       if (err) {
         Logger.error({ err: err }, 'Error getting token');
         return cb({
@@ -999,18 +1007,20 @@ function startup(logger) {
 
       requestWithDefaults(requestOptions, (err, resp, body) => {
         if (err) {
-          return cb(_createJsonErrorPayload(
-            'Unable to connect to TQ server',
-            null,
-            '500',
-            '2A',
-            'ThreatQ HTTP Request Failed',
-            {
-              err: err,
-              response: resp,
-              body: body
-            }
-          ));
+          return cb(
+            _createJsonErrorPayload(
+              'Unable to connect to TQ server',
+              null,
+              '500',
+              '2A',
+              'ThreatQ HTTP Request Failed',
+              {
+                err: err,
+                response: resp,
+                body: body
+              }
+            )
+          );
         }
 
         if (resp.statusCode === 401) {
