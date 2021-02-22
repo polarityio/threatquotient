@@ -208,10 +208,10 @@ function _getEntityType(entity) {
     return 'URL';
   }
   if (entity.isSHA1) {
-    return 'SHA1';
+    return 'SHA-1';
   }
   if (entity.isSHA256) {
-    return 'SHA256';
+    return 'SHA-256';
   }
   if (entity.isMD5) {
     return 'MD5';
