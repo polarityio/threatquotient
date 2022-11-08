@@ -1,12 +1,14 @@
 'use strict';
 
-const request = require('request');
+const request = require('postman-request');
 const config = require('./config/config');
+const { version: packageVersion } = require('./package.json');
 const { Address6 } = require('ip-address');
 const threatQConfig = require('./config/threatq.config');
 const async = require('async');
 const fs = require('fs');
 const SessionManager = require('./lib/session-manager');
+const USER_AGENT = `polarity-threatq-integration-v${packageVersion}`;
 
 let Logger;
 let requestWithDefaults;
@@ -975,6 +977,10 @@ function startup(logger) {
     defaults.rejectUnauthorized = config.request.rejectUnauthorized;
   }
 
+  defaults.headers = {
+    'User-Agent': USER_AGENT
+  }
+
   if (Array.isArray(threatQConfig.threatQAttributes)) {
     threatQConfig.threatQAttributes.forEach((attribute) => {
       attributesConfigured = true;
@@ -1052,8 +1058,6 @@ function validateOptions(userOptions, cb) {
       message: 'You must provide your TQ server URL'
     });
   }
-
-  Logger.info(userOptions);
 
   if (+userOptions.minimumScore.value.value > +userOptions.maximumScore.value.value) {
     errors.push({
