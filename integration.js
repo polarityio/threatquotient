@@ -2,10 +2,12 @@
 
 const request = require('postman-request');
 const config = require('./config/config');
+const { version: packageVersion } = require('./package.json');
 const { Address6 } = require('ip-address');
 const async = require('async');
 const fs = require('fs');
 const SessionManager = require('./lib/session-manager');
+const USER_AGENT = `polarity-threatq-integration-v${packageVersion}`;
 
 let Logger;
 let requestWithDefaults;
@@ -207,10 +209,10 @@ function _getEntityType(entity) {
     return 'URL';
   }
   if (entity.isSHA1) {
-    return 'SHA1';
+    return 'SHA-1';
   }
   if (entity.isSHA256) {
-    return 'SHA256';
+    return 'SHA-256';
   }
   if (entity.isMD5) {
     return 'MD5';
@@ -974,6 +976,10 @@ function startup(logger) {
     defaults.rejectUnauthorized = config.request.rejectUnauthorized;
   }
 
+  defaults.headers = {
+    'User-Agent': USER_AGENT
+  }
+  
   if (Array.isArray(config.threatQAttributes)) {
     config.threatQAttributes.forEach((attribute) => {
       attributesConfigured = true;
@@ -1051,8 +1057,6 @@ function validateOptions(userOptions, cb) {
       message: 'You must provide your TQ server URL'
     });
   }
-
-  Logger.info(userOptions);
 
   if (+userOptions.minimumScore.value.value > +userOptions.maximumScore.value.value) {
     errors.push({

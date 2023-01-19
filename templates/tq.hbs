@@ -1,5 +1,5 @@
 <div class="view-in-threatq">
-    <a href="{{details.userOptions.url}}/indicators/{{details.id}}/details">View in ThreatQ {{fa-icon "external-link-square" class="external-link-icon"}}</a>
+    <a href="{{details.userOptions.url}}/indicators/{{details.id}}/details">View in ThreatQ {{fa-icon icon="external-link-square" class="external-link-icon"}}</a>
 </div>
 
 <ul class="nav nav-tabs">
@@ -40,9 +40,9 @@
             </div>
             <button type="submit" disabled={{isUpdating}} {{action "updateValue" details.id updateFieldName tmpUpdateValue}} class="float-right btn btn-sm btn-secondary">
             {{#if isUpdating}}
-                {{fa-icon "spinner-third" spin=true fixedWidth=true}}
+                {{fa-icon icon="spinner-third" spin=true fixedWidth=true}}
             {{else}}
-                {{fa-icon "save" fixedWidth=true}}
+                {{fa-icon icon="save" fixedWidth=true}}
             {{/if}}
             Save
             </button>
@@ -64,7 +64,7 @@
             </div>
             --}}
             <div>
-                <span class="p-title">{{fa-icon "info" fixedWidth=true}} Info</span>
+                <span class="p-title">{{fa-icon icon="info" fixedWidth=true}} Info</span>
             </div>
             {{#if details.type.name}}
                 <div>
@@ -76,7 +76,7 @@
             {{#if details.status}}
                 <div>
                     {{#if details.userOptions.allowEditingStatus}}
-                        <span class="p-key editable-attribute" {{action "showUpdateModal" true "status" details.status.id}}>Status {{fa-icon "edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
+                        <span class="p-key editable-attribute" {{action "showUpdateModal" true "status" details.status.id}}>Status {{fa-icon icon="edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
                     {{else}}
                         <span class="p-key">Status: </span>
                     {{/if}}
@@ -94,7 +94,7 @@
             {{#if details.score}}
                 <div>
                     {{#if details.userOptions.allowEditingScore}}
-                        <span class="p-key editable-attribute" {{action "showUpdateModal" true "score" details.score}}>Score {{fa-icon "edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
+                        <span class="p-key editable-attribute" {{action "showUpdateModal" true "score" details.score}}>Score {{fa-icon icon="edit" fixedWidth=true class="edit-icon"}}</span><span class="p-key">:</span>
                     {{else}}
                         <span class="p-key" >Score:</span>
                     {{/if}}
@@ -131,7 +131,7 @@
             {{/if}}
 
             <div>
-                <span class="p-title">{{fa-icon "books" fixedWidth=true}} Sources ({{details.sources.length}})</span>
+                <span class="p-title">{{fa-icon icon="books" fixedWidth=true}} Sources ({{details.sources.length}})</span>
             </div>
             {{#if (gt details.sources.length 0)}}
                 <div>
@@ -145,14 +145,14 @@
             <div class="d-flex align-items-center justify-content-between">
                 <span class="d-flex align-items-center">
                     <span class="p-title">
-                        {{fa-icon "fingerprint" fixedWidth=true}} Attributes ({{details.attributes.length}})
+                        {{fa-icon icon="fingerprint" fixedWidth=true}} Attributes ({{details.attributes.length}})
                     </span>
                     <span class="add-attribute-icon mt-1 ml-1"{{action "showAddAttribute"}}>
-                        {{fa-icon "plus-circle" fixedWidth=true class="success"}}
+                        {{fa-icon icon="plus-circle" fixedWidth=true class="success"}}
                     </span>
                 </span>
                 {{#if loadingAttributesMessage}}
-                    <span class="p-footnote mt-1">{{fa-icon "spinner-third" spin=true}} {{loadingAttributesMessage}}</span>
+                    <span class="p-footnote mt-1">{{fa-icon icon="spinner-third" spin=true}} {{loadingAttributesMessage}}</span>
                 {{/if}}
             </div>
             {{else}}
@@ -206,7 +206,7 @@
 
             {{#if attributeErrorMessage}}
                 <div class="p-red attribute-error-block mt-2 mb-2">
-                    <span>{{fa-icon "exclamation-triangle" fixedWidth=true}}  {{attributeErrorMessage}}</span>
+                    <span>{{fa-icon icon="exclamation-triangle" fixedWidth=true}}  {{attributeErrorMessage}}</span>
                 </div>
             {{/if}}
             {{#if (gt details.attributes.length 0)}}
@@ -248,7 +248,7 @@
                                                 <button class="tq-btn ml-1"{{action "hideAttributeEditModal" attributeIndex}}>Cancel</button>
                                             </div>
                                             <div {{action "deleteAttribute" attributeIndex attribute.id attribute.name}}>
-                                                {{fa-icon "trash-alt" class="delete-attribute-icon" fixedWidth=true}}
+                                                {{fa-icon icon="trash-alt" class="delete-attribute-icon" fixedWidth=true}}
                                             </div>
                                         </div>
                                     </div>
@@ -257,7 +257,7 @@
                         {{!--
                         <td>
                             <span {{action "deleteAttribute" attribute.id attribute.name}}>
-                                {{fa-icon "times-circle"fixedWidth=true class="delete-attribute-icon"}}
+                                {{fa-icon icon="times-circle"fixedWidth=true class="delete-attribute-icon"}}
                             </span>
                         </td>
                         --}}
@@ -268,7 +268,7 @@
                                 <td>
                                     {{#if (get (get details.userOptions._threatQAttributeLookup attribute.name) "editable")}}
                                         <span {{action "editAttribute" attributeIndex attribute.value}}>
-                                            {{fa-icon "pencil" fixedWidth=true class="edit-icon"}}
+                                            {{fa-icon icon="pencil" fixedWidth=true class="edit-icon"}}
                                         </span>
                                     {{/if}}
                                 </td>
@@ -281,7 +281,7 @@
 
 
             <div>
-                <span class="p-title">{{fa-icon "tags" fixedWidth=true}} Tags ({{details.tags.length}})</span>
+                <span class="p-title">{{fa-icon icon="tags" fixedWidth=true}} Tags ({{details.tags.length}})</span>
             </div>
             {{#if (gt details.tags.length 0)}}
                 {{#each details.tags as | tag |}}
@@ -289,7 +289,7 @@
                         {{tag.name}}
                         {{#if details.userOptions.allowDeletingTags}}
                             <span {{action "deleteTag" tag.id}}>
-                                {{fa-icon "times" class="tag-close-icon" fixedWidth=true}}
+                                {{fa-icon icon="times" class="tag-close-icon" fixedWidth=true}}
                             </span>
                         {{/if}}
                     </span>
@@ -305,7 +305,7 @@
                 </div>
             {{/if}}
             <div>
-                <span class="p-title">{{fa-icon "file-alt" fixedWidth=true}} Description {{#unless details.description}}(None){{/unless}}</span>
+                <span class="p-title">{{fa-icon icon="file-alt" fixedWidth=true}} Description {{#unless details.description}}(None){{/unless}}</span>
             </div>
             {{#if details.description}}
               <div class="description-container">
@@ -315,7 +315,7 @@
 
 
             <div>
-                <span class="p-title">{{fa-icon "fire" fixedWidth=true}} Related Adversaries ({{details.adversaries.length}})</span>
+                <span class="p-title">{{fa-icon icon="fire" fixedWidth=true}} Related Adversaries ({{details.adversaries.length}})</span>
             </div>
             {{#if (gt details.adversaries.length 0)}}
                 {{#each details.adversaries as |adversary|}}
@@ -330,7 +330,7 @@
             <div class="comment-header d-flex align-items-center">
                 <div class="num-comments-container">
                     {{#if loadingComments}}
-                        <span class="p-footnote">{{fa-icon "spinner-third" spin=true}} {{loadingCommentsMessage}} ...</span>
+                        <span class="p-footnote">{{fa-icon icon="spinner-third" spin=true}} {{loadingCommentsMessage}} ...</span>
                     {{else}}
                         {{#if (eq details.comments.length details.totalComments)}}
                             <span class="p-footnote">{{details.totalComments}} total comments</span>
@@ -340,7 +340,7 @@
                     {{/if}}
                 </div>
                 <div class="add-comment-btn-container">
-                    <span class="p-action" {{action (mut showAddComment) true}}>{{fa-icon "plus-circle"}} Add Comment</span>
+                    <span class="p-action" {{action (mut showAddComment) true}}>{{fa-icon icon="plus-circle"}} Add Comment</span>
                 </div>
             </div>
 
@@ -363,7 +363,7 @@
                     </div>
                     {{#if createCommentError}}
                         <div class="p-red comment-error-block">
-                            {{fa-icon "exclamation-triangle" fixedWidth=true}} {{createCommentError}}
+                            {{fa-icon icon="exclamation-triangle" fixedWidth=true}} {{createCommentError}}
                         </div>
                     {{/if}}
                 </div>
@@ -377,10 +377,10 @@
                             <span class="comment-username">{{comment.sources.0.name}}</span> ({{moment-format comment.created_at timeZone=timeZone}})
                             {{#if (eq details.currentUserSourceId comment.sources.0.id)}}
                                 <span {{action "showDeleteCommentConfirmation" commentIndex}}>
-                                    {{fa-icon "trash-alt" fixedWidth class="delete-comment-icon"}}
+                                    {{fa-icon icon="trash-alt" fixedWidth=true class="delete-comment-icon"}}
                                 </span>
                                 <span {{action "showEditCommentModal" commentIndex}}>
-                                    {{fa-icon "pencil" fixedWidth class="edit-comment-icon"}}
+                                    {{fa-icon icon="pencil" fixedWidth=true class="edit-comment-icon"}}
                                 </span>
                             {{/if}}
                         </div>
@@ -416,7 +416,7 @@
                                     </div>
                                     {{#if comment._updateCommentError}}
                                         <div class="p-red comment-error-block">
-                                            {{fa-icon "exclamation-triangle" fixedWidth=true}} {{comment._updateCommentError}}
+                                            {{fa-icon icon="exclamation-triangle" fixedWidth=true}} {{comment._updateCommentError}}
                                         </div>
                                     {{/if}}
                                 </div>
@@ -430,7 +430,7 @@
         </div>
     {{/if}}
     {{#if errorMessage}}
-        <div class="error-box">{{fa-icon "exclamation-triangle" fixedWidth=true}}  {{errorMessage}}</div>
+        <div class="error-box">{{fa-icon icon="exclamation-triangle" fixedWidth=true}}  {{errorMessage}}</div>
     {{/if}}
 {{/unless}}
 
