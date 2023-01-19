@@ -1,9 +1,8 @@
 'use strict';
 
-const request = require('request');
+const request = require('postman-request');
 const config = require('./config/config');
 const { Address6 } = require('ip-address');
-const threatQConfig = require('./config/threatq.config');
 const async = require('async');
 const fs = require('fs');
 const SessionManager = require('./lib/session-manager');
@@ -889,10 +888,10 @@ function _createLookupResultObject(entityObj, result, options) {
   ) {
     return;
   }
-
+  const _threatQStatuses = config.options.find((option) => option.key === 'indicatorStatuses').options;
   result.userOptions = {
     _threatQAttributeLookup: attributeLookup,
-    _threatQStatuses: threatQConfig.threatQStatuses,
+    _threatQStatuses,
     url: options.url,
     allowAddingTag: options.allowAddingTag,
     allowDeletingTags: options.allowDeletingTags,
@@ -975,8 +974,8 @@ function startup(logger) {
     defaults.rejectUnauthorized = config.request.rejectUnauthorized;
   }
 
-  if (Array.isArray(threatQConfig.threatQAttributes)) {
-    threatQConfig.threatQAttributes.forEach((attribute) => {
+  if (Array.isArray(config.threatQAttributes)) {
+    config.threatQAttributes.forEach((attribute) => {
       attributesConfigured = true;
       attributeLookup[attribute.name] = attribute;
     });
