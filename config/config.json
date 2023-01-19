@@ -1,0 +1,152 @@
+{
+  "name": "ThreatQ",
+  "acronym": "TQ",
+  "description": "Threat Quotient integration for IP's, hashes, domains, and email",
+  "entityTypes": ["IPv4", "IPv4CIDR", "IPv6", "hash", "domain", "email"],
+  "defaultColor": "light-pink",
+  "styles": ["./styles/tq.less"],
+  "block": { "component": { "file": "./component/tq.js" }, "template": { "file": "./templates/tq.hbs" } },
+  "request": { "cert": "", "key": "", "passphrase": "", "ca": "", "proxy": "", "rejectUnauthorized": true },
+  "logging": { "level": "info" },
+  "options": [
+    {
+      "key": "url",
+      "name": "ThreatQ Server URL",
+      "description": "The URL for your ThreatQ server which should include the schema (i.e., http, https) and port if required",
+      "default": "",
+      "type": "text",
+      "userCanEdit": false,
+      "adminOnly": true
+    },
+    {
+      "key": "username",
+      "name": "Username",
+      "description": "Your TQ username you want the integration to authenticate as (typically an email address)",
+      "default": "",
+      "type": "text",
+      "userCanEdit": true,
+      "adminOnly": false
+    },
+    {
+      "key": "password",
+      "name": "Password",
+      "description": "The password for the provided username you want the integration to authenticate as",
+      "default": "",
+      "type": "password",
+      "userCanEdit": true,
+      "adminOnly": false
+    },
+    {
+      "key": "client",
+      "name": "Client ID",
+      "description": "The Client ID for your ThreatQ deployment.  (accessible at https://<yourserver>/assets/js/config.js)",
+      "default": "",
+      "type": "text",
+      "userCanEdit": true,
+      "adminOnly": false
+    },
+    {
+      "key": "allowAddingTag",
+      "name": "Enable Adding Tags",
+      "description": "If checked, users will be able to add new tags from the overlay window",
+      "default": true,
+      "type": "boolean",
+      "userCanEdit": false,
+      "adminOnly": true
+    },
+    {
+      "key": "allowDeletingTags",
+      "name": "Enable Deleting Tags",
+      "description": "If checked, users will be able to delete tags from the overlay window",
+      "default": true,
+      "type": "boolean",
+      "userCanEdit": false,
+      "adminOnly": true
+    },
+    {
+      "key": "allowEditingStatus",
+      "name": "Enable Editing of Indicator Status",
+      "description": "If checked, users will be able to edit the \"status\" of an indicator (e.g., Active, WhiteListed, Review etc.)",
+      "default": false,
+      "type": "boolean",
+      "userCanEdit": false,
+      "adminOnly": true
+    },
+    {
+      "key": "allowEditingScore",
+      "name": "Enable Manual Editing of Indicator Score",
+      "description": "If checked, users will be able to edit the \"score\" of an indicator.  Note that manually setting the score of an indicator is not a recommended best practice.  Setting the score manually prevents ThreatQuotient from setting an automatic indicator score.",
+      "default": false,
+      "type": "boolean",
+      "userCanEdit": false,
+      "adminOnly": true
+    },
+    {
+      "key": "minimumScore",
+      "name": "Minimum Score",
+      "description": "The minimum indicator score required for indicators to be returned by the integration",
+      "default": { "value": "5", "display": "Low" },
+      "type": "select",
+      "options": [
+        { "value": "100", "display": "10 - Very High" },
+        { "value": "9", "display": "9 - High" },
+        { "value": "8", "display": "8 - Medium" },
+        { "value": "7", "display": "7 - Medium" },
+        { "value": "6", "display": "6 - Low" },
+        { "value": "5", "display": "5 - Low" },
+        { "value": "4", "display": "4 - Very Low" },
+        { "value": "3", "display": "3 - Very Low" },
+        { "value": "2", "display": "2 - Very Low" },
+        { "value": "1", "display": "1 - Very Low" },
+        { "value": "0", "display": "0 - Very Low/Generated Score" }
+      ],
+      "multiple": false,
+      "userCanEdit": true,
+      "adminOnly": false
+    },
+    {
+      "key": "maximumScore",
+      "name": "Maximum Score",
+      "description": "The maximum indicator score required for indicators to be returned by the integration",
+      "default": { "value": "100", "display": "10 - Very High" },
+      "type": "select",
+      "options": [
+        { "value": "100", "display": "10 - Very High" },
+        { "value": "9", "display": "9 - High" },
+        { "value": "8", "display": "8 - Medium" },
+        { "value": "7", "display": "7 - Medium" },
+        { "value": "6", "display": "6 - Low" },
+        { "value": "5", "display": "5 - Low" },
+        { "value": "4", "display": "4 - Very Low" },
+        { "value": "3", "display": "3 - Very Low" },
+        { "value": "2", "display": "2 - Very Low" },
+        { "value": "1", "display": "1 - Very Low" },
+        { "value": "0", "display": "0 - Very Low/Generated Score" }
+      ],
+      "multiple": false,
+      "userCanEdit": true,
+      "adminOnly": false
+    },
+    {
+      "key": "indicatorStatuses",
+      "name": "Indicator Statuses",
+      "description": "Select 1 or more indicator status types to return.  The integration will only search and return indicators with the specified statuses",
+      "type": "select",
+      "options": [
+        { "display": "Active", "value": "1" },
+        { "display": "Expired", "value": "2" },
+        { "display": "Indirect", "value": "3" },
+        { "display": "Review", "value": "4" },
+        { "display": "Whitelisted", "value": "5" }
+      ],
+      "default": [
+        { "display": "Active", "value": "1" },
+        { "display": "Review", "value": "4" }
+      ],
+      "multiple": true,
+      "userCanEdit": true,
+      "adminOnly": false
+    }
+  ],
+  "threatQAttributes": []
+}

@@ -1,5 +1,3 @@
-const threatQConfig = require('./threatq.config');
-
 module.exports = {
   /**
    * Name of the integration which is displayed in the Polarity integrations user interface
@@ -26,6 +24,7 @@ module.exports = {
    */
   description: "Threat Quotient integration for IP's, hashes, domains, and email",
   entityTypes: ['IPv4', 'IPv4CIDR', 'IPv6', 'hash', 'domain', 'email'],
+  defaultColor: 'light-pink',
   /**
    * An array of style files (css or less) that will be included for your integration. Any styles specified in
    * the below files can be used in your custom template.
@@ -287,20 +286,97 @@ module.exports = {
       name: 'Indicator Statuses',
       description:
         'Select 1 or more indicator status types to return.  The integration will only search and return indicators with the specified statuses',
-      default: threatQConfig.threatQStatuses.reduce((acc, threatQ) => {
-        if (threatQ.default) {
-          acc.push({ value: threatQ.value, display: threatQ.display });
-        }
-        return acc;
-      }, []),
       type: 'select',
-      options: threatQConfig.threatQStatuses.reduce((acc, threatQ) => {
-        acc.push({ value: threatQ.value, display: threatQ.display });
-        return acc;
-      }, []),
+
+      /** STEP 1
+       * An array of ThreatQ status objects. You can add additional custom
+       * statuses that you have added to your ThreatQ instance here.
+       *
+       * To review all custom statuses you can use the following endpoint
+       * NOTE: Must be queried as an admin
+       *
+       * GET https://<your-threatq-server>/api/indicator/statuses
+       *
+       * display {String} The Display value for the status
+       * value {String} the ID value for the given status
+       */
+      options: [
+        {
+          display: 'Active',
+          value: '1'
+        },
+        {
+          display: 'Expired',
+          value: '2'
+        },
+        {
+          display: 'Indirect',
+          value: '3'
+        },
+        {
+          display: 'Review',
+          value: '4'
+        },
+        {
+          display: 'Whitelisted',
+          value: '5'
+        }
+      ],
+      /** STEP 2
+       * An array of the ThreatQ status objects from the STEP 1 above
+       * that will be set as the default `Indicator Statuses` on startup of the
+       * integration for users
+       */
+      default: [
+        {
+          display: 'Active',
+          value: '1'
+        },
+        {
+          display: 'Review',
+          value: '4'
+        }
+      ],
       multiple: true,
       userCanEdit: true,
       adminOnly: false
     }
+  ],
+  /** STEP 3
+   * name {String} name of the attribute you wish to display.  Must match exactly and is case sensitive.
+   * editable {Boolean} true if you want this attribute to be editable, false if not
+   * values {Array|String} an array of string options to set the attribute to.  If empty or not provided the
+   *       attribute values will be a free form input.
+   *
+   * Example:
+   *
+   * threatQAttributes: [{
+   *   name: 'Investigation',
+   *   editable: false
+   * },
+   * {
+   *   name: 'Confidence',
+   *   editable: ['low', 'medium', 'high']
+   * },
+   * {
+   *   name: 'False Positive',
+   *   editable: true,
+   *   values: ['true', 'false']
+   * }]
+   */
+  threatQAttributes: [
+    // {
+    //   name: 'Investigation',
+    //   editable: false
+    // },
+    // {
+    //   name: 'Confidence',
+    //   editable: true
+    // },
+    // {
+    //   name: 'False Positive',
+    //   editable: true,
+    //   values: ['true', 'false']
+    // }
   ]
 };

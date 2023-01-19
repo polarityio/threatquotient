@@ -17,13 +17,40 @@ Polarity's ThreatQuotient integration gives users access to automated MD5, SHA1,
 
 ** Upgrading
 
-When upgrading this integration don't forget to make a copy of your `config/threatq.config.js` file so you can copy
+When upgrading this integration don't forget to make a copy of your `config/config.js` file for Polarity Server v4.* or `config/config.json` file for Polarity Server v5.* so you can copy
 any settings over to the upgraded integration.
+
+## Configuring Custom Statuses
+
+This integration comes pre-configured with the default ThreatQ Indicator Statuses
+
+* Active
+* Expired
+* Indirect
+* Review
+* Whitelisted
+
+You can add additional custom statuses, or remove default statuses by modifying the `Indicator Statuses` options property in 
+the `config/config.js` file for Polarity Server v4.* or `config/config.json` file for Polarity Server v5.*.  The `options` property is an array of status objects
+where each status object contains the following properties:
+
+* `display` {String} The display value for the status (e.g., 'Active')
+* `value` {String} The id for the status as a string (e.g., '1').  The id value is set by the ThreatQ server.
+
+To view a list of all valid statuses in your ThreatQ deployment you can query the following endpoint with a GET request
+
+```
+https://<your-threatq-server>/api/indicator/statuses
+```
+
+> ***NOTE:*** If this endpoint returns an empty result `{}` your account does not have access to view the indicator types and
+you will need to rerun the query while logged in as a ThreatQuotient admin. 
+
 
 ## Configuring Attributes
 
 The ThreatQ integration supports providing a list of Indicator Attributes you would like displayed in the Overlay Window.
-These attributes are configured in the `config/threatq.config.js` file under the `threatQAttributes` property.
+These attributes are configured in the `config/config.js` file for Polarity Server v4.* or `config/config.json` file for Polarity Server v5.*  under the `threatQAttributes` property at the bottom of the file.
 
 The `threatQAttributes` property is an array of attribute objects where each attribute object has the following required
 and optional properties:
@@ -49,33 +76,6 @@ and optional properties:
    }]
 }
 ```
-
-## Configuring Custom Statuses
-
-This integration comes pre-configured with the default ThreatQ Indicator Statuses
-
-* Active
-* Expired
-* Indirect
-* Review
-* Whitelisted
-
-You can add additional custom statuses, or remove default statuses by modifying the `threatQStatuses` property in 
-the `config/threatq.config.js` configuration file.  The `threatQStatuses` property is an array of status objects
-where each status object contains the following properties:
-
-* `value` {String} The id for the status as a string (e.g., '1').  The id value is set by the ThreatQ server.
-* `display` {String} The display value for the status (e.g., 'Active')
-* `default` {Boolean} A true or false value indicating whether the status value should be set as a default search option
-
-To view a list of all valid statuses in your ThreatQ deployment you can query the following endpoint with a GET request
-
-```
-https://<your-threatq-server>/api/indicator/statuses
-```
-
-> If this endpoint returns an empty result `{}` your account does not have access to view the indicator types and
-you will need to rerun the query while logged in as a ThreatQuotient admin. 
 
 ## ThreatQuotient Integration Options
 
@@ -127,7 +127,7 @@ will only return indicators that have a score between 4 and 8 inclusive (i.e., i
 ### Indicator Statuses
 
 Select 1 or more indicator status types to return. The integration will only search and return indicators with the specified statuses.
-Indicator status options are taken from your `config/threatq.config.js` file.  For more information see the section on configuring custom statuses.
+Indicator status options configured at the installation of this integration.  For more information see the section on configuring custom statuses.
 
 ## Installation Instructions
 
