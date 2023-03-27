@@ -1,4 +1,5 @@
 {
+  "polarityIntegrationUuid": "bd7fa340-cce1-11ed-aeee-075d3490155d",
   "name": "ThreatQ",
   "acronym": "TQ",
   "description": "Threat Quotient integration for IP's, hashes, domains, and email",
