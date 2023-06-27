@@ -7,7 +7,7 @@
   "defaultColor": "light-pink",
   "styles": ["./styles/tq.less"],
   "block": { "component": { "file": "./component/tq.js" }, "template": { "file": "./templates/tq.hbs" } },
-  "request": { "cert": "", "key": "", "passphrase": "", "ca": "", "proxy": "", "rejectUnauthorized": true },
+  "request": { "cert": "", "key": "", "passphrase": "", "ca": "", "proxy": "" },
   "logging": { "level": "info" },
   "options": [
     {
